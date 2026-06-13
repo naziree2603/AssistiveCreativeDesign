@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 1fc1dfa8e5ced480e8d74c3456e47bc5
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 73036
+  packageName: Mobile Speech Recognizer
+  packageVersion: 1.3.6
+  assetPath: Assets/Plugins/Android/AndroidManifest.xml
+  uploadId: 452389
