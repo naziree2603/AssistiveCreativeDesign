@@ -19,6 +19,12 @@ public class FullPosterImageAPI : MonoBehaviour
     public string latestPromptUsed;
     public string latestStoragePath;
 
+    [Header("Description UI")]
+    [SerializeField] private TMP_Text detailsText;
+    [SerializeField] private Button replayButton;
+
+    private string lastDescription = "";
+
     [Header("Score UI")]
     [SerializeField] private TMP_InputField finalExplanationInput;
 
@@ -32,6 +38,8 @@ public class FullPosterImageAPI : MonoBehaviour
 
     [SerializeField] private TMP_Text feedbackText;
     [SerializeField] private TMP_Text suggestionText;
+
+    private string scoreSpeechText = "";
 
     //Generate Poster Image
     public void GenerateFullPosterImage()
@@ -102,7 +110,82 @@ public class FullPosterImageAPI : MonoBehaviour
         posterRawImage.SetNativeSize();
 
         statusText.text = "Poster image generated successfully.";
-        
+
+        StartCoroutine(DescribeGeneratedImage());
+
+    }
+
+    private IEnumerator DescribeGeneratedImage()
+    {
+        string url =
+            backendUrl + "/describe-generated-image";
+
+        DescribeImageRequest requestData =
+            new DescribeImageRequest();
+
+        requestData.imageUrl =
+            latestImageUrl;
+
+        string jsonBody =
+            JsonUtility.ToJson(requestData);
+
+        using UnityWebRequest request =
+            new UnityWebRequest(url, "POST");
+
+        byte[] bodyRaw =
+            Encoding.UTF8.GetBytes(jsonBody);
+
+        request.uploadHandler =
+            new UploadHandlerRaw(bodyRaw);
+
+        request.downloadHandler =
+            new DownloadHandlerBuffer();
+
+        request.SetRequestHeader(
+            "Content-Type",
+            "application/json");
+
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            statusText.text =
+                "Describe API Error";
+
+            yield break;
+        }
+
+        DescribeImageResponse response =
+            JsonUtility.FromJson<DescribeImageResponse>(
+                request.downloadHandler.text);
+
+        if (!response.success)
+            yield break;
+
+        lastDescription =
+            response.description.detailedDescription;
+
+        detailsText.text =
+            lastDescription;
+
+        ReadDescription();
+    }
+
+    public void ReplayDescription()
+    {
+        ReadDescription();
+    }
+
+    private void ReadDescription()
+    {
+        if (string.IsNullOrEmpty(lastDescription))
+            return;
+
+        UAP_AccessibilityManager.Say(
+            lastDescription,
+            false,
+            true
+        );
     }
 
     //AI Scoring
@@ -203,8 +286,41 @@ public class FullPosterImageAPI : MonoBehaviour
         suggestionText.text =
             response.score.improvementSuggestion;
 
-        statusText.text =
-            "Score calculated successfully.";
+        scoreSpeechText =
+            "Total score "
+            + response.score.total
+            + " out of one hundred. "
+            + "Prompt quality "
+            + response.score.promptQuality
+            + " out of twenty. "
+            + "Poster message "
+            + response.score.posterMessage
+            + " out of twenty. "
+            + "Design quality "
+            + response.score.designQuality
+            + " out of twenty. "
+            + "Accessibility understanding "
+            + response.score.accessibilityUnderstanding
+            + " out of twenty. "
+            + "Feedback. "
+            + response.score.feedback;
+
+              statusText.text =
+              "Score calculated successfully.";
+
+        ReadScore();
+    }
+
+    public void ReadScore()
+    {
+        if (string.IsNullOrEmpty(scoreSpeechText))
+            return;
+
+        UAP_AccessibilityManager.Say(
+            scoreSpeechText,
+            false,
+            true
+        );
     }
 
     [Serializable]
