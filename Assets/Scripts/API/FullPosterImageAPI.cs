@@ -22,6 +22,7 @@ public class FullPosterImageAPI : MonoBehaviour
     [Header("Description UI")]
     [SerializeField] private TMP_Text detailsText;
     [SerializeField] private Button replayButton;
+    [SerializeField] private RawImage descriptionRawImage;
 
     private string lastDescription = "";
 
@@ -107,11 +108,19 @@ public class FullPosterImageAPI : MonoBehaviour
 
         Texture2D texture = DownloadHandlerTexture.GetContent(request);
         posterRawImage.texture = texture;
+
+        if (descriptionRawImage != null)
+        {
+            descriptionRawImage.texture = texture;
+        }
+
         posterRawImage.SetNativeSize();
 
         statusText.text = "Poster image generated successfully.";
 
         StartCoroutine(DescribeGeneratedImage());
+
+            
 
     }
 
@@ -181,10 +190,8 @@ public class FullPosterImageAPI : MonoBehaviour
         if (string.IsNullOrEmpty(lastDescription))
             return;
 
-        UAP_AccessibilityManager.Say(
-            lastDescription,
-            false,
-            true
+        AndroidTTS.Speak(
+        lastDescription
         );
     }
 
@@ -316,10 +323,8 @@ public class FullPosterImageAPI : MonoBehaviour
         if (string.IsNullOrEmpty(scoreSpeechText))
             return;
 
-        UAP_AccessibilityManager.Say(
-            scoreSpeechText,
-            false,
-            true
+        AndroidTTS.Speak(
+        lastDescription
         );
     }
 
