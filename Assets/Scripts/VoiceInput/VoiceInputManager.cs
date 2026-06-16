@@ -17,6 +17,8 @@ public class VoiceInputManager : MonoBehaviour
         SpeechRecognizer.RequestAccess();
 
         SpeechRecognizer.SetDetectionLanguage("ms-MY");
+
+        SpeechRecognizer.SetDetectionLanguage("en-US");
     }
 
     public void SetTargetInput(TMP_InputField input)
