@@ -26,6 +26,12 @@ public class FullPosterImageAPI : MonoBehaviour
 
     private string lastDescription = "";
 
+    [Header("Revision UI")]
+    [SerializeField] private TMP_InputField revisionPromptInput;
+    [SerializeField] private RawImage revisionPosterRawImage;
+
+    
+
     [Header("Score UI")]
     [SerializeField] private TMP_InputField finalExplanationInput;
 
@@ -107,6 +113,7 @@ public class FullPosterImageAPI : MonoBehaviour
         }
 
         Texture2D texture = DownloadHandlerTexture.GetContent(request);
+
         posterRawImage.texture = texture;
 
         if (descriptionRawImage != null)
@@ -114,14 +121,17 @@ public class FullPosterImageAPI : MonoBehaviour
             descriptionRawImage.texture = texture;
         }
 
+        if (revisionPosterRawImage != null)
+        {
+            revisionPosterRawImage.texture = texture;
+        }
+
         posterRawImage.SetNativeSize();
 
         statusText.text = "Poster image generated successfully.";
 
         StartCoroutine(DescribeGeneratedImage());
-
-            
-
+  
     }
 
     private IEnumerator DescribeGeneratedImage()
@@ -195,6 +205,121 @@ public class FullPosterImageAPI : MonoBehaviour
         );
     }
 
+    public void GenerateRevisionPoster()
+    {
+        string revisionPrompt =
+            revisionPromptInput.text.Trim();
+
+        if (string.IsNullOrEmpty(revisionPrompt))
+        {
+            statusText.text =
+                "Please enter revision prompt.";
+            return;
+        }
+
+        StartCoroutine(
+            GenerateRevisionImage(
+                revisionPrompt
+            ));
+    }
+
+    private IEnumerator GenerateRevisionImage(
+    string revisionPrompt)
+    {
+        string url =
+            backendUrl +
+            "/generate-full-poster-image";
+
+        PosterImageRequest requestData =
+            new PosterImageRequest
+            {
+                userPrompt =
+                    revisionPrompt
+            };
+
+        string jsonBody =
+            JsonUtility.ToJson(
+                requestData);
+
+        using UnityWebRequest request =
+            new UnityWebRequest(
+                url,
+                "POST");
+
+        byte[] bodyRaw =
+            Encoding.UTF8.GetBytes(
+                jsonBody);
+
+        request.uploadHandler =
+            new UploadHandlerRaw(
+                bodyRaw);
+
+        request.downloadHandler =
+            new DownloadHandlerBuffer();
+
+        request.SetRequestHeader(
+            "Content-Type",
+            "application/json");
+
+        statusText.text =
+            "Generating revision...";
+
+        yield return request.SendWebRequest();
+
+        if (request.result !=
+            UnityWebRequest.Result.Success)
+        {
+            statusText.text =
+                request.error;
+
+            yield break;
+        }
+
+        FullPosterImageResponse response =
+            JsonUtility.FromJson
+            <FullPosterImageResponse>(
+                request.downloadHandler.text);
+
+        if (!response.success)
+        {
+            statusText.text =
+                "Revision failed.";
+            yield break;
+        }
+
+        yield return StartCoroutine(
+            DownloadRevisionImage(
+                response.imageUrl
+            ));
+    }
+
+    private IEnumerator DownloadRevisionImage(
+    string imageUrl)
+    {
+        using UnityWebRequest request =
+            UnityWebRequestTexture.GetTexture(
+                imageUrl);
+
+        yield return request.SendWebRequest();
+
+        if (request.result !=
+            UnityWebRequest.Result.Success)
+        {
+            yield break;
+        }
+
+        Texture2D texture =
+            DownloadHandlerTexture.GetContent(
+                request);
+
+        revisionPosterRawImage.texture =
+            texture;
+
+        statusText.text =
+            "Revision generated.";
+    }
+
+
     //AI Scoring
     public void CalculateAIScore()
     {
@@ -215,7 +340,8 @@ public class FullPosterImageAPI : MonoBehaviour
         {
             userPrompt = promptInput.text,
             imageUrl = latestImageUrl,
-            revisionPrompt = "",
+            revisionPrompt =
+                revisionPromptInput.text,
             finalExplanation = finalExplanationInput.text
         };
 
@@ -324,41 +450,11 @@ public class FullPosterImageAPI : MonoBehaviour
             return;
 
         AndroidTTS.Speak(
-        lastDescription
+            scoreSpeechText
         );
     }
 
-    [Serializable]
-    public class ScoreRequest
-    {
-        public string userPrompt;
-        public string imageUrl;
-        public string revisionPrompt;
-        public string finalExplanation;
-    }
-
-    [Serializable]
-    public class ScoreResponse
-    {
-        public bool success;
-
-        public ScoreBreakdown score;
-    }
-
-    [Serializable]
-    public class ScoreBreakdown
-    {
-        public int promptQuality;
-        public int posterMessage;
-        public int designQuality;
-        public int accessibilityUnderstanding;
-        public int revisionProcess;
-        public int finalExplanation;
-        public int total;
-        public string feedback;
-        public string improvementSuggestion;
-    }
-
+  
 }
 
 [Serializable]
@@ -402,4 +498,45 @@ public class ImageDescription
     public string layout;
     public string message;
 }
+
+[Serializable]
+public class RevisionPosterRequest
+{
+    public string imageUrl;
+    public string revisionPrompt;
+}
+
+[Serializable]
+public class ScoreRequest
+{
+    public string userPrompt;
+    public string imageUrl;
+    public string revisionPrompt;
+    public string finalExplanation;
+}
+
+[Serializable]
+public class ScoreResponse
+{
+    public bool success;
+
+    public ScoreBreakdown score;
+}
+
+[Serializable]
+public class ScoreBreakdown
+{
+    public int promptQuality;
+    public int posterMessage;
+    public int designQuality;
+    public int accessibilityUnderstanding;
+    public int revisionProcess;
+    public int finalExplanation;
+    public int total;
+    public string feedback;
+    public string improvementSuggestion;
+}
+
+
+
 
