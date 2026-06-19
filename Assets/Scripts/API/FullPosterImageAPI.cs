@@ -11,6 +11,7 @@ public class FullPosterImageAPI : MonoBehaviour
 {
     [Header("Backend")]
     [SerializeField] private string backendUrl = "https://assistive-design-backend-506363853940.asia-southeast1.run.app";
+
     [Header("UI")]
     [SerializeField] private TMP_InputField promptInput;
     [SerializeField] private TMP_Text statusText;
@@ -30,11 +31,8 @@ public class FullPosterImageAPI : MonoBehaviour
     [SerializeField] private TMP_InputField revisionPromptInput;
     [SerializeField] private RawImage revisionPosterRawImage;
 
-    
-
     [Header("Score UI")]
     [SerializeField] private TMP_InputField finalExplanationInput;
-
     [SerializeField] private TMP_Text promptQualityText;
     [SerializeField] private TMP_Text posterMessageText;
     [SerializeField] private TMP_Text designOutputText;
@@ -42,11 +40,21 @@ public class FullPosterImageAPI : MonoBehaviour
     [SerializeField] private TMP_Text revisionText;
     [SerializeField] private TMP_Text finalExplanationScoreText;
     [SerializeField] private TMP_Text totalScoreText;
-
     [SerializeField] private TMP_Text feedbackText;
     [SerializeField] private TMP_Text suggestionText;
-
     private string scoreSpeechText = "";
+
+    [Header("Loading Status")]
+    [SerializeField] private GameObject loadingPanel;
+    [SerializeField] private TMP_Text loadingMessage;
+
+    [Header("Panel Page")]
+    public GameObject promptPanel;
+    public GameObject outputPanel;
+    public GameObject revisionPanel;
+    public GameObject finalExplanationPanel;
+    public GameObject scorePanel;
+    
 
     //Generate Poster Image
     public void GenerateFullPosterImage()
@@ -76,7 +84,10 @@ public class FullPosterImageAPI : MonoBehaviour
         request.downloadHandler = new DownloadHandlerBuffer();
         request.SetRequestHeader("Content-Type", "application/json");
 
-        statusText.text = "Generating poster image...";
+        ShowLoading(
+            "Generating your poster. Please wait."
+        );
+
         yield return request.SendWebRequest();
         if (request.result != UnityWebRequest.Result.Success)
         {
@@ -128,7 +139,14 @@ public class FullPosterImageAPI : MonoBehaviour
 
         posterRawImage.SetNativeSize();
 
-        statusText.text = "Poster image generated successfully.";
+        HideLoading();
+
+        AndroidTTS.Speak(
+            "Poster generated successfully."
+        );
+
+        promptPanel.SetActive(false);
+        outputPanel.SetActive(true);
 
         StartCoroutine(DescribeGeneratedImage());
   
@@ -224,7 +242,7 @@ public class FullPosterImageAPI : MonoBehaviour
     }
 
     private IEnumerator GenerateRevisionImage(
-    string revisionPrompt)
+ string revisionPrompt)
     {
         string url =
             backendUrl +
@@ -261,36 +279,44 @@ public class FullPosterImageAPI : MonoBehaviour
             "Content-Type",
             "application/json");
 
-        statusText.text =
-            "Generating revision...";
+        ShowLoading(
+            "Applying your poster revisions. Please wait."
+        );
 
         yield return request.SendWebRequest();
 
         if (request.result !=
             UnityWebRequest.Result.Success)
         {
+            HideLoading(); // Hide popup if error
+
             statusText.text =
                 request.error;
 
             yield break;
         }
 
+        // SUCCESS
+        HideLoading();
+
+        AndroidTTS.Speak(
+            "Revision completed successfully."
+        );
+
         FullPosterImageResponse response =
-            JsonUtility.FromJson
-            <FullPosterImageResponse>(
+            JsonUtility.FromJson<FullPosterImageResponse>(
                 request.downloadHandler.text);
 
-        if (!response.success)
-        {
-            statusText.text =
-                "Revision failed.";
-            yield break;
-        }
+        latestImageUrl =
+            response.imageUrl;
 
         yield return StartCoroutine(
-            DownloadRevisionImage(
-                response.imageUrl
-            ));
+            DownloadImage(response.imageUrl)
+        );
+
+        revisionPanel.SetActive(false);
+
+        
     }
 
     private IEnumerator DownloadRevisionImage(
@@ -364,15 +390,22 @@ public class FullPosterImageAPI : MonoBehaviour
             "Content-Type",
             "application/json");
 
-        statusText.text =
-            "Calculating score...";
+        ShowLoading(
+            "Evaluating your submission. Please wait."
+        );
 
         yield return request.SendWebRequest();
 
         if (request.result != UnityWebRequest.Result.Success)
         {
+            HideLoading();
+
             statusText.text =
                 "Score API Error: " + request.error;
+
+            AndroidTTS.Speak(
+                "Evaluation failed. Please try again."
+            );
 
             Debug.LogError(
                 request.downloadHandler.text);
@@ -380,14 +413,22 @@ public class FullPosterImageAPI : MonoBehaviour
             yield break;
         }
 
-        Debug.Log(
-            request.downloadHandler.text);
+        HideLoading();
+
+        AndroidTTS.Speak(
+            "Evaluation completed successfully. Opening score page."
+        );
+
+        yield return new WaitForSeconds(3f);
 
         ScoreResponse response =
             JsonUtility.FromJson<ScoreResponse>(
                 request.downloadHandler.text);
 
         DisplayScore(response);
+
+        finalExplanationPanel.SetActive(false);
+        scorePanel.SetActive(true);
     }
     private void DisplayScore(
     ScoreResponse response)
@@ -454,8 +495,24 @@ public class FullPosterImageAPI : MonoBehaviour
         );
     }
 
-  
+    private void ShowLoading(string message)
+    {
+        loadingPanel.SetActive(true);
+
+        loadingMessage.text = message;
+
+        AndroidTTS.Speak(message);
+    }
+
+    private void HideLoading()
+    {
+        loadingPanel.SetActive(false);
+    }
+
+
 }
+
+
 
 [Serializable]
 public class PosterImageRequest

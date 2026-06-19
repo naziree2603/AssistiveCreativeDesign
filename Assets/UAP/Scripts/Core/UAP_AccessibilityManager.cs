@@ -11,6 +11,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Globalization;
+using System;
 
 /// <summary>This is the main object to handle all the accessibility in an app. Please use the premade Accessibility Manager prefab.</summary>
 [AddComponentMenu("Accessibility/Core/UAP Manager")]
@@ -4818,7 +4819,12 @@ public class UAP_AccessibilityManager : MonoBehaviour
 		Debug.Log("[Accessibility] " + message);
 	}
 
-	//////////////////////////////////////////////////////////////////////////
+    internal static void SelectElement(AccessibleButton startButton)
+    {
+        throw new NotImplementedException();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
 
 }
 

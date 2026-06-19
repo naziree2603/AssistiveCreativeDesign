@@ -103,7 +103,7 @@ public class Accessibility_EditorFunctions
 	[MenuItem("Tools/UAP Accessibility/Add Accessibility Manager to Scene")]
 	static public void AddPrefabToScene()
 	{
-		if (GameObject.FindObjectOfType<UAP_AccessibilityManager>() != null)
+		if (GameObject.FindObjectsOfType<UAP_AccessibilityManager>() != null)
 		{
 			EditorUtility.DisplayDialog("UAP already present", "There is already an Accessibility Manager in the scene", "OK");
 			return;

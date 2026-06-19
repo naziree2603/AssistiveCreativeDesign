@@ -6,9 +6,10 @@ public class MicButton : MonoBehaviour
     public TMP_InputField targetInput;
     public VoiceInputManager voiceManager;
 
-    public void StartMic()
+    public void ToggleMic()
     {
         voiceManager.SetTargetInput(targetInput);
-        voiceManager.StartMic();
+
+        voiceManager.ToggleMic();
     }
 }
