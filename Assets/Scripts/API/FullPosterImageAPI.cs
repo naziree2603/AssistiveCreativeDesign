@@ -30,6 +30,7 @@ public class FullPosterImageAPI : MonoBehaviour
     [Header("Revision UI")]
     [SerializeField] private TMP_InputField revisionPromptInput;
     [SerializeField] private RawImage revisionPosterRawImage;
+    private bool isRevisionMode = false;
 
     [Header("Score UI")]
     [SerializeField] private TMP_InputField finalExplanationInput;
@@ -51,6 +52,7 @@ public class FullPosterImageAPI : MonoBehaviour
     [Header("Panel Page")]
     public GameObject promptPanel;
     public GameObject outputPanel;
+    public GameObject descriptionPanel;
     public GameObject revisionPanel;
     public GameObject finalExplanationPanel;
     public GameObject scorePanel;
@@ -65,6 +67,8 @@ public class FullPosterImageAPI : MonoBehaviour
             statusText.text = "Please enter a poster prompt.";
             return;
         }
+
+        isRevisionMode = false;
         StartCoroutine(PostGeneratePosterImage(prompt));
     }
 
@@ -91,7 +95,15 @@ public class FullPosterImageAPI : MonoBehaviour
         yield return request.SendWebRequest();
         if (request.result != UnityWebRequest.Result.Success)
         {
-            statusText.text = "API Error: " + request.error + "\n" + request.downloadHandler.text;
+            HideLoading();
+
+            statusText.text =
+                "API Error: " + request.error;
+
+            AndroidTTS.Speak(
+                "Poster generation failed."
+            );
+
             yield break;
         }
         FullPosterImageResponse response
@@ -99,7 +111,15 @@ public class FullPosterImageAPI : MonoBehaviour
 
         if (!response.success || string.IsNullOrEmpty(response.imageUrl))
         {
-            statusText.text = "No poster image returned.";
+            HideLoading();
+
+            statusText.text =
+                "No poster image returned.";
+
+            AndroidTTS.Speak(
+                "No poster image returned."
+            );
+
             yield break;
         }
 
@@ -110,7 +130,7 @@ public class FullPosterImageAPI : MonoBehaviour
         yield return StartCoroutine(DownloadImage(response.imageUrl));
     }
 
-    private IEnumerator DownloadImage(string imageUrl)
+    private IEnumerator DownloadImage(string imageUrl,bool isRevision = false)
     {
         statusText.text = "Downloading poster image...";
 
@@ -125,16 +145,23 @@ public class FullPosterImageAPI : MonoBehaviour
 
         Texture2D texture = DownloadHandlerTexture.GetContent(request);
 
-        posterRawImage.texture = texture;
-
-        if (descriptionRawImage != null)
+        if (!isRevision)
         {
-            descriptionRawImage.texture = texture;
+            // Original Poster
+            posterRawImage.texture = texture;
+
+            if (descriptionRawImage != null)
+            {
+                descriptionRawImage.texture = texture;
+            }
         }
-
-        if (revisionPosterRawImage != null)
+        else
         {
-            revisionPosterRawImage.texture = texture;
+            // Revised Poster
+            if (revisionPosterRawImage != null)
+            {
+                revisionPosterRawImage.texture = texture;
+            }
         }
 
         posterRawImage.SetNativeSize();
@@ -142,14 +169,22 @@ public class FullPosterImageAPI : MonoBehaviour
         HideLoading();
 
         AndroidTTS.Speak(
-            "Poster generated successfully."
+            "Poster generated successfully. Opening poster description page."
         );
 
-        promptPanel.SetActive(false);
-        outputPanel.SetActive(true);
+        if (!isRevision)
+        {
+            promptPanel.SetActive(false);
+            outputPanel.SetActive(true);
+        }
 
-        StartCoroutine(DescribeGeneratedImage());
-  
+
+
+        if (!isRevision)
+        {
+            StartCoroutine(DescribeGeneratedImage());
+        }
+
     }
 
     private IEnumerator DescribeGeneratedImage()
@@ -205,6 +240,12 @@ public class FullPosterImageAPI : MonoBehaviour
         detailsText.text =
             lastDescription;
 
+        if (!isRevisionMode)
+        {
+            outputPanel.SetActive(false);
+            descriptionPanel.SetActive(true);
+        }
+
         ReadDescription();
     }
 
@@ -225,24 +266,41 @@ public class FullPosterImageAPI : MonoBehaviour
 
     public void GenerateRevisionPoster()
     {
-        string revisionPrompt =
-            revisionPromptInput.text.Trim();
-
-        if (string.IsNullOrEmpty(revisionPrompt))
+        if (string.IsNullOrEmpty(revisionPromptInput.text))
         {
             statusText.text =
                 "Please enter revision prompt.";
+
             return;
         }
 
+        string finalRevisionPrompt =
+            BuildRevisionPrompt();
+
+        isRevisionMode = true;
+
         StartCoroutine(
             GenerateRevisionImage(
-                revisionPrompt
+                finalRevisionPrompt
             ));
     }
+    private string BuildRevisionPrompt()
+    {
+        return
+            "Original Prompt: " +
+            promptInput.text +
 
-    private IEnumerator GenerateRevisionImage(
- string revisionPrompt)
+            ". Current Poster Description: " +
+            lastDescription +
+
+            ". User Revision Request: " +
+            revisionPromptInput.text +
+
+            ". Improve the existing poster while keeping the same theme, purpose, accessibility requirements, and overall message. Apply only the requested changes.";
+    }
+
+
+    private IEnumerator GenerateRevisionImage(  string revisionPrompt)
     {
         string url =
             backendUrl +
@@ -310,13 +368,10 @@ public class FullPosterImageAPI : MonoBehaviour
         latestImageUrl =
             response.imageUrl;
 
-        yield return StartCoroutine(
-            DownloadImage(response.imageUrl)
-        );
+        yield return StartCoroutine(DownloadImage(response.imageUrl,true));
 
-        revisionPanel.SetActive(false);
 
-        
+
     }
 
     private IEnumerator DownloadRevisionImage(
@@ -428,7 +483,14 @@ public class FullPosterImageAPI : MonoBehaviour
         DisplayScore(response);
 
         finalExplanationPanel.SetActive(false);
+
         scorePanel.SetActive(true);
+
+        yield return new WaitForSeconds(1f);
+
+        ReadScore();
+
+
     }
     private void DisplayScore(
     ScoreResponse response)
@@ -461,28 +523,43 @@ public class FullPosterImageAPI : MonoBehaviour
             response.score.improvementSuggestion;
 
         scoreSpeechText =
-            "Total score "
-            + response.score.total
-            + " out of one hundred. "
-            + "Prompt quality "
-            + response.score.promptQuality
-            + " out of twenty. "
-            + "Poster message "
-            + response.score.posterMessage
-            + " out of twenty. "
-            + "Design quality "
-            + response.score.designQuality
-            + " out of twenty. "
-            + "Accessibility understanding "
-            + response.score.accessibilityUnderstanding
-            + " out of twenty. "
-            + "Feedback. "
-            + response.score.feedback;
+         "Evaluation completed. "
 
-              statusText.text =
-              "Score calculated successfully.";
+         + "Total score: "
+         + response.score.total
+         + " out of one hundred. "
 
-        ReadScore();
+         + "Prompt quality: "
+         + response.score.promptQuality
+         + " out of twenty. "
+
+         + "Poster message and content: "
+         + response.score.posterMessage
+         + " out of twenty. "
+
+         + "Design output quality: " 
+         + response.score.designQuality
+         + " out of twenty. "
+
+         + "Accessibility understanding: "
+         + response.score.accessibilityUnderstanding
+         + " out of twenty. "
+
+         + "Revision process: "
+         + response.score.revisionProcess
+         + " out of ten. "
+
+         + "Final explanation: "
+         + response.score.finalExplanation
+         + " out of ten. "
+
+         + "Feedback: "
+         + response.score.feedback
+
+         + ". Improvement suggestion: "
+         + response.score.improvementSuggestion;
+
+
     }
 
     public void ReadScore()

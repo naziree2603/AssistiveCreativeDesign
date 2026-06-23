@@ -10,12 +10,14 @@ public class VoiceInputManager : MonoBehaviour
     [Header("Audio")]
     public AudioSource audioSource;
     public AudioClip startBeep;
-    public AudioClip stopBeep;
 
     private TMP_InputField currentInput;
     private SpeechRecognizerListener listener;
 
     private bool isRecording = false;
+
+    private bool canPressMic = true;
+    [SerializeField] private float micCooldown = 1.5f;
 
     private void Start()
     {
@@ -49,77 +51,83 @@ public class VoiceInputManager : MonoBehaviour
 
     public void ToggleMic()
     {
-        if (!isRecording)
-        {
-            StartRecording();
-        }
-        else
-        {
-            StopRecording();
-        }
+        if (!canPressMic)
+            return;
+
+        StartCoroutine(MicCooldown());
+
+        StartRecording();
+    }
+
+    private System.Collections.IEnumerator MicCooldown()
+    {
+        canPressMic = false;
+
+        yield return new WaitForSeconds(micCooldown);
+
+        canPressMic = true;
     }
 
     private void StartRecording()
     {
-        Debug.Log("Recording Started");
-
         Handheld.Vibrate();
 
-        if (audioSource != null && startBeep != null)
-        {
-            audioSource.PlayOneShot(startBeep);
-        }
+        AndroidTTS.StopSpeaking();
 
-        if (recordingStatusText != null)
-        {
-            recordingStatusText.text = "Listening...";
-        }
+        if (audioSource != null && startBeep != null)
+            audioSource.PlayOneShot(startBeep);
+
+        recordingStatusText.text =
+            "Listening...";
 
         SpeechRecognizer.StartRecording(false);
 
         isRecording = true;
     }
 
-    private void StopRecording()
-    {
-        Debug.Log("Recording Stopped");
 
-        SpeechRecognizer.StopIfRecording();
-
-        Handheld.Vibrate();
-
-        if (audioSource != null && stopBeep != null)
-        {
-            audioSource.PlayOneShot(stopBeep);
-        }
-
-        if (recordingStatusText != null)
-        {
-            recordingStatusText.text = "Processing...";
-        }
-
-        isRecording = false;
-    }
 
     private void OnFinalResult(string result)
     {
-        Debug.Log("Speech Result: " + result);
+        isRecording = false;
+
+        if (string.IsNullOrEmpty(result))
+        {
+            recordingStatusText.text =
+                "No speech detected";
+
+            AndroidTTS.Speak(
+                "No speech detected. Please try again."
+            );
+
+            return;
+        }
 
         if (currentInput != null)
         {
             currentInput.text = result;
         }
 
-        if (recordingStatusText != null)
-        {
-            recordingStatusText.text = "Voice input completed";
-        }
+        recordingStatusText.text =
+            "Voice input completed";
+
+        StartCoroutine(ReadResult(result));
+    }
+
+    private System.Collections.IEnumerator ReadResult(string result)
+    {
+        yield return new WaitForSeconds(0.5f);
 
         AndroidTTS.Speak(
-            "Voice input completed."
-        );
+        "Voice input completed. You entered. " + result);
+    }
 
-        isRecording = false;
+    public void ReplayInput()
+    {
+        if (currentInput != null)
+        {
+            AndroidTTS.Speak(currentInput.text);
+        }
     }
 
     private void OnDestroy()

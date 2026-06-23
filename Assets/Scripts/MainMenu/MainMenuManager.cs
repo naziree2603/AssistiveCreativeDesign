@@ -44,7 +44,7 @@ public class MainMenuManager : MonoBehaviour
             "Describe your poster idea using text or voice. " +
             "Press Generate Poster to create an AI generated poster image. " +
 
-            "Press Next to go to page 2."
+            "Press Next to go to page 2. "
         );
     }
 
@@ -61,7 +61,7 @@ public class MainMenuManager : MonoBehaviour
 
             "Step 4, Provide a final explanation. " +
 
-            "Explain your poster concept, message, and accessibility considerations." +
+            "Explain your poster concept, message, and accessibility considerations. " +
             
             "Step 5, Calculate your score. " +
 
@@ -90,13 +90,15 @@ public class MainMenuManager : MonoBehaviour
 
             "1, Participant Details. " +
 
-            "2, Generate Poster. " +
+            "2, Generate Poster Prompt. " +
 
-            "3, Generated Poster. " +
+            "3, Poster Description. " +
 
-            "4, Poster Description. " +
+            "4, Revise Poster " +
 
-            "5, Score Poster. "
+            "5, Final Explaination. " +
+
+            "6, AI Score Calculation"
             );
     }
     public void Page4()
