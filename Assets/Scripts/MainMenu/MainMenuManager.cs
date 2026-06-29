@@ -10,6 +10,19 @@ using static UnityEngine.UIElements.UxmlAttributeDescription;
 public class MainMenuManager : MonoBehaviour
 {
 
+    [Header("Panel Page")]
+    public GameObject mainMenuPanel;
+    public GameObject participantPanel;
+    public GameObject promptPanel;
+    public GameObject outputPanel;
+    public GameObject descriptionPanel;
+    public GameObject revisionPanel;
+    public GameObject finalExplanationPanel;
+    public GameObject scorePanel;
+    public GameObject leaderboardPanel;
+    public GameObject posterReviewPanel;
+
+
     void Start()
     {
         WelcomeSpeech();
@@ -24,6 +37,25 @@ public class MainMenuManager : MonoBehaviour
         );
 
     }
+
+    public void GoHome()
+    {
+        AndroidTTS.Speak(
+            "Returning to Main Menu."
+        );
+
+        mainMenuPanel.SetActive(true);
+        participantPanel.SetActive(false);
+        promptPanel.SetActive(false);
+        outputPanel.SetActive(false);
+        descriptionPanel.SetActive(false);
+        revisionPanel.SetActive(false);
+        finalExplanationPanel.SetActive(false);
+        scorePanel.SetActive(false);
+        leaderboardPanel.SetActive(false);
+    }
+
+    
 
     public void OpenInstructions()
     {
@@ -126,6 +158,16 @@ public class MainMenuManager : MonoBehaviour
         AndroidTTS.Speak(
             "Participant details page. Fill in your name, institution, and category."
         );
+
+        mainMenuPanel.SetActive(false);
+        participantPanel.SetActive(true);
+        promptPanel.SetActive(false);
+        outputPanel.SetActive(false);
+        descriptionPanel.SetActive(false);
+        revisionPanel.SetActive(false);
+        finalExplanationPanel.SetActive(false);
+        scorePanel.SetActive(false);
+        leaderboardPanel.SetActive(false);
     }
 
     public void BackToMainMenu()
@@ -145,6 +187,16 @@ public class MainMenuManager : MonoBehaviour
         AndroidTTS.Speak(
             "Poster Promt Page"
         );
+
+        mainMenuPanel.SetActive(false);
+        participantPanel.SetActive(false);
+        promptPanel.SetActive(true);
+        outputPanel.SetActive(false);
+        descriptionPanel.SetActive(false);
+        revisionPanel.SetActive(false);
+        finalExplanationPanel.SetActive(false);
+        scorePanel.SetActive(false);
+        leaderboardPanel.SetActive(false);
     }
 
     public void GoToGeneratedPoster()
@@ -153,6 +205,16 @@ public class MainMenuManager : MonoBehaviour
         AndroidTTS.Speak(
             "Generated Poster Image Page."
         );
+
+        mainMenuPanel.SetActive(false);
+        participantPanel.SetActive(false);
+        promptPanel.SetActive(false);
+        outputPanel.SetActive(true);
+        descriptionPanel.SetActive(false);
+        revisionPanel.SetActive(false);
+        finalExplanationPanel.SetActive(false);
+        scorePanel.SetActive(false);
+        leaderboardPanel.SetActive(false);
     }
 
     public void GoToDescriptionPage()
@@ -161,6 +223,16 @@ public class MainMenuManager : MonoBehaviour
         AndroidTTS.Speak(
             "Description Poster Page."
         );
+
+        mainMenuPanel.SetActive(false);
+        participantPanel.SetActive(false);
+        promptPanel.SetActive(false);
+        outputPanel.SetActive(false);
+        descriptionPanel.SetActive(true);
+        revisionPanel.SetActive(false);
+        finalExplanationPanel.SetActive(false);
+        scorePanel.SetActive(false);
+        leaderboardPanel.SetActive(false);
     }
 
     public void GoToRevisePage()
@@ -169,6 +241,16 @@ public class MainMenuManager : MonoBehaviour
         AndroidTTS.Speak(
             "Revise Poster Page."
         );
+
+        mainMenuPanel.SetActive(false);
+        participantPanel.SetActive(false);
+        promptPanel.SetActive(false);
+        outputPanel.SetActive(false);
+        descriptionPanel.SetActive(false);
+        revisionPanel.SetActive(true);
+        finalExplanationPanel.SetActive(false);
+        scorePanel.SetActive(false);
+        leaderboardPanel.SetActive(false);
     }
 
     public void GoToFinalExplainPage()
@@ -178,6 +260,16 @@ public class MainMenuManager : MonoBehaviour
             "Final Explainantion Page. " +
             "Explain your poster concept, message, and accessibility considerations. "
         );
+
+        mainMenuPanel.SetActive(false);
+        participantPanel.SetActive(false);
+        promptPanel.SetActive(false);
+        outputPanel.SetActive(false);
+        descriptionPanel.SetActive(false);
+        revisionPanel.SetActive(false);
+        finalExplanationPanel.SetActive(true);
+        scorePanel.SetActive(false);
+        leaderboardPanel.SetActive(false);
     }
 
     public void GoToScorePage()
@@ -186,6 +278,16 @@ public class MainMenuManager : MonoBehaviour
         AndroidTTS.Speak(
             "Score Full Poster Page."
         );
+
+        mainMenuPanel.SetActive(false);
+        participantPanel.SetActive(false);
+        promptPanel.SetActive(false);
+        outputPanel.SetActive(false);
+        descriptionPanel.SetActive(false);
+        revisionPanel.SetActive(false);
+        finalExplanationPanel.SetActive(false);
+        scorePanel.SetActive(true);
+        leaderboardPanel.SetActive(false);
     }
 
     public void GoToLeaderboardPage()
@@ -194,6 +296,16 @@ public class MainMenuManager : MonoBehaviour
         AndroidTTS.Speak(
             "Leaderboard Page."
         );
+
+        mainMenuPanel.SetActive(false);
+        participantPanel.SetActive(false);
+        promptPanel.SetActive(false);
+        outputPanel.SetActive(false);
+        descriptionPanel.SetActive(false);
+        revisionPanel.SetActive(false);
+        finalExplanationPanel.SetActive(false);
+        scorePanel.SetActive(false);
+        leaderboardPanel.SetActive(true);
     }
 
 

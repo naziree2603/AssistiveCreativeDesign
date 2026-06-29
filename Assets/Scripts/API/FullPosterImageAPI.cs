@@ -32,6 +32,13 @@ public class FullPosterImageAPI : MonoBehaviour
     [SerializeField] private RawImage revisionPosterRawImage;
     private bool isRevisionMode = false;
 
+
+
+    [Header("Revision Settings")]
+    [SerializeField] private int maxRevisionCount = 3;
+
+    private int currentRevisionCount = 0;
+
     [Header("Score UI")]
     [SerializeField] private TMP_InputField finalExplanationInput;
     [SerializeField] private TMP_Text promptQualityText;
@@ -49,14 +56,22 @@ public class FullPosterImageAPI : MonoBehaviour
     [SerializeField] private GameObject loadingPanel;
     [SerializeField] private TMP_Text loadingMessage;
 
+    private Coroutine loadingVoiceCoroutine;
+
     [Header("Panel Page")]
+    public GameObject mainMenuPanel;
     public GameObject promptPanel;
     public GameObject outputPanel;
     public GameObject descriptionPanel;
     public GameObject revisionPanel;
     public GameObject finalExplanationPanel;
     public GameObject scorePanel;
-    
+    public GameObject posterReviewPanel;
+
+    [Header("Review Page")]
+    [SerializeField] private RawImage reviewPosterRawImage;
+    [SerializeField] private GameObject originalPreviewPanel;
+    [SerializeField] private RawImage originalPreviewRawImage;
 
     //Generate Poster Image
     public void GenerateFullPosterImage()
@@ -129,7 +144,7 @@ public class FullPosterImageAPI : MonoBehaviour
 
         yield return StartCoroutine(DownloadImage(response.imageUrl));
     }
-
+    private Texture2D originalPosterTexture;
     private IEnumerator DownloadImage(string imageUrl,bool isRevision = false)
     {
         statusText.text = "Downloading poster image...";
@@ -148,7 +163,11 @@ public class FullPosterImageAPI : MonoBehaviour
         if (!isRevision)
         {
             // Original Poster
+
             posterRawImage.texture = texture;
+
+            originalPosterTexture = texture;
+
 
             if (descriptionRawImage != null)
             {
@@ -168,9 +187,18 @@ public class FullPosterImageAPI : MonoBehaviour
 
         HideLoading();
 
-        AndroidTTS.Speak(
-            "Poster generated successfully. Opening poster description page."
-        );
+        if (!isRevision)
+        {
+            AndroidTTS.Speak(
+                "Poster generated successfully. Opening poster description page."
+            );
+        }
+        else
+        {
+            AndroidTTS.Speak( 
+                "Revised poster generated successfully."
+            );
+        }
 
         if (!isRevision)
         {
@@ -240,6 +268,8 @@ public class FullPosterImageAPI : MonoBehaviour
         detailsText.text =
             lastDescription;
 
+       
+
         if (!isRevisionMode)
         {
             outputPanel.SetActive(false);
@@ -264,8 +294,44 @@ public class FullPosterImageAPI : MonoBehaviour
         );
     }
 
+    public void OpenOriginalPoster()
+    {
+        revisionPanel.SetActive(false);
+
+        originalPreviewPanel.SetActive(true);
+
+        originalPreviewRawImage.texture =
+            originalPosterTexture;
+
+        AndroidTTS.Speak(
+            "Opening original poster preview."
+        );
+    }
+
+    public void BackToRevision()
+    {
+        originalPreviewPanel.SetActive(false);
+
+        revisionPanel.SetActive(true);
+
+        AndroidTTS.Speak(
+            "Returning to revision page."
+        );
+    }
+
     public void GenerateRevisionPoster()
     {
+        if (currentRevisionCount >= maxRevisionCount)
+        {
+            ShowLoading(
+                "Maximum revision limit reached. Opening final explanation page."
+            );
+
+            StartCoroutine(OpenFinalExplanationAfterDelay());
+
+            return;
+        }
+
         if (string.IsNullOrEmpty(revisionPromptInput.text))
         {
             statusText.text =
@@ -283,6 +349,21 @@ public class FullPosterImageAPI : MonoBehaviour
             GenerateRevisionImage(
                 finalRevisionPrompt
             ));
+    }
+
+    private IEnumerator OpenFinalExplanationAfterDelay()
+    {
+        yield return new WaitForSeconds(6f);
+
+        HideLoading();
+
+        revisionPanel.SetActive(false);
+
+        finalExplanationPanel.SetActive(true);
+
+        AndroidTTS.Speak(
+            "Maximum revisions reached. Please provide your final explanation."
+        );
     }
     private string BuildRevisionPrompt()
     {
@@ -358,7 +439,11 @@ public class FullPosterImageAPI : MonoBehaviour
         HideLoading();
 
         AndroidTTS.Speak(
-            "Revision completed successfully."
+            "Revision "
+            + currentRevisionCount
+            + " completed. "
+            + (maxRevisionCount - currentRevisionCount)
+            + " revisions remaining."
         );
 
         FullPosterImageResponse response =
@@ -367,6 +452,14 @@ public class FullPosterImageAPI : MonoBehaviour
 
         latestImageUrl =
             response.imageUrl;
+
+        currentRevisionCount++;
+
+        statusText.text =
+            "Revision "
+            + currentRevisionCount
+            + " of "
+            + maxRevisionCount;
 
         yield return StartCoroutine(DownloadImage(response.imageUrl,true));
 
@@ -578,13 +671,109 @@ public class FullPosterImageAPI : MonoBehaviour
 
         loadingMessage.text = message;
 
-        AndroidTTS.Speak(message);
+        if (loadingVoiceCoroutine != null)
+            StopCoroutine(loadingVoiceCoroutine);
+
+        loadingVoiceCoroutine =
+            StartCoroutine(
+                RepeatLoadingVoice(message)
+            );
+    }
+
+    private IEnumerator RepeatLoadingVoice(string message)
+    {
+        while (loadingPanel.activeSelf)
+        {
+            AndroidTTS.Speak(message);
+
+            yield return new WaitForSeconds(6f);
+        }
     }
 
     private void HideLoading()
     {
         loadingPanel.SetActive(false);
+
+        if (loadingVoiceCoroutine != null)
+        {
+            StopCoroutine(loadingVoiceCoroutine);
+            loadingVoiceCoroutine = null;
+        }
     }
+
+    public void OpenPosterReview()
+    {
+        scorePanel.SetActive(false);
+
+        posterReviewPanel.SetActive(true);
+
+        reviewPosterRawImage.texture =
+         revisionPosterRawImage.texture; 
+
+        AndroidTTS.Speak(
+            "Opening final poster review."
+        );
+    }
+
+    public void BackToScore()
+    {
+        posterReviewPanel.SetActive(false);
+
+        scorePanel.SetActive(true);
+
+        AndroidTTS.Speak(
+            "Returning to score page."
+        );
+    }
+
+    public void ResetSystem()
+    {
+        currentRevisionCount = 0;
+
+        latestImageUrl = "";
+        latestPromptUsed = "";
+        latestStoragePath = "";
+        lastDescription = "";
+        scoreSpeechText = "";
+
+        promptInput.text = "";
+        revisionPromptInput.text = "";
+        finalExplanationInput.text = "";
+
+        detailsText.text = "";
+
+        promptQualityText.text = "";
+        posterMessageText.text = "";
+        designOutputText.text = "";
+        accessibilityText.text = "";
+        revisionText.text = "";
+        finalExplanationScoreText.text = "";
+        totalScoreText.text = "";
+
+        feedbackText.text = "";
+        suggestionText.text = "";
+
+        posterRawImage.texture = null;
+        descriptionRawImage.texture = null;
+        revisionPosterRawImage.texture = null;
+        reviewPosterRawImage.texture = null;
+
+        promptPanel.SetActive(false);
+        outputPanel.SetActive(false);
+        descriptionPanel.SetActive(false);
+        revisionPanel.SetActive(false);
+        finalExplanationPanel.SetActive(false);
+        scorePanel.SetActive(false);
+        posterReviewPanel.SetActive(false);
+
+        mainMenuPanel.SetActive(true);
+
+        AndroidTTS.Speak(
+            "System reset completed. Returning to home page."
+        );
+    }
+
+
 
 
 }

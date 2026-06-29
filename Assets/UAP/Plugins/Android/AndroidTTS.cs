@@ -93,4 +93,23 @@ public class AndroidTTS : MonoBehaviour
 #endif
 	}
 
+    public static void SpeakMalay(string text)
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+    var plugin =
+        new AndroidJavaClass(
+            "com.metalpopgames.androidtts.AndroidTTS");
+
+    plugin.CallStatic(
+        "SetLanguage",
+        "ms-MY");
+
+    plugin.CallStatic(
+        "Speak",
+        text);
+#endif
+    }
+
+
+
 }
