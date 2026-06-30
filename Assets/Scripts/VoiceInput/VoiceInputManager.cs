@@ -19,6 +19,8 @@ public class VoiceInputManager : MonoBehaviour
     private bool canPressMic = true;
     [SerializeField] private float micCooldown = 1.5f;
 
+
+
     private void Start()
     {
         listener = FindFirstObjectByType<SpeechRecognizerListener>();
@@ -122,13 +124,6 @@ public class VoiceInputManager : MonoBehaviour
         "Voice input completed. You entered. " + result);
     }
 
-    public void ReplayInput()
-    {
-        if (currentInput != null)
-        {
-            AndroidTTS.Speak(currentInput.text);
-        }
-    }
 
     private void OnDestroy()
     {

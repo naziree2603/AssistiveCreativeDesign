@@ -703,7 +703,7 @@ public class FullPosterImageAPI : MonoBehaviour
 
     public void OpenPosterReview()
     {
-        scorePanel.SetActive(false);
+       
 
         posterReviewPanel.SetActive(true);
 
@@ -719,7 +719,7 @@ public class FullPosterImageAPI : MonoBehaviour
     {
         posterReviewPanel.SetActive(false);
 
-        scorePanel.SetActive(true);
+        
 
         AndroidTTS.Speak(
             "Returning to score page."
