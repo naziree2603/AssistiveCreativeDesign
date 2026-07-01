@@ -9,8 +9,16 @@ using UnityEngine.UI;
 
 public class FullPosterImageAPI : MonoBehaviour
 {
+    
+
     [Header("Backend")]
     [SerializeField] private string backendUrl = "https://assistive-design-backend-506363853940.asia-southeast1.run.app";
+
+    [Header("Participant Details")]
+    [SerializeField] TMP_InputField participantNameInput;
+    [SerializeField] TMP_InputField institutionInput;
+    [SerializeField] TMP_Dropdown categoryDropdown;
+
 
     [Header("UI")]
     [SerializeField] private TMP_InputField promptInput;
@@ -74,6 +82,22 @@ public class FullPosterImageAPI : MonoBehaviour
     [SerializeField] private RawImage originalPreviewRawImage;
 
     //Generate Poster Image
+
+    public void StartParticipant()
+    {
+        ParticipantData data = new ParticipantData();
+
+        data.participantID = Guid.NewGuid().ToString();
+        data.participantName = participantNameInput.text;
+        data.institution = institutionInput.text;
+        data.category = categoryDropdown.options[categoryDropdown.value].text;
+        data.createdDate = DateTime.Now.ToString();
+
+        ParticipantManager.Instance.CurrentParticipant = data;
+
+        JsonSaveSystem.Save(data);
+    }
+
     public void GenerateFullPosterImage()
     {
         string prompt = promptInput.text.Trim();
@@ -141,6 +165,15 @@ public class FullPosterImageAPI : MonoBehaviour
         latestImageUrl = response.imageUrl;
         latestPromptUsed = response.promptUsed;
         latestStoragePath = response.storagePath;
+
+        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
+
+        data.prompt = promptInput.text;
+        data.originalImageUrl = latestImageUrl;
+        data.lastPage = "Output";
+
+        JsonSaveSystem.Save(data);
+
 
         yield return StartCoroutine(DownloadImage(response.imageUrl));
     }
@@ -264,6 +297,13 @@ public class FullPosterImageAPI : MonoBehaviour
 
         lastDescription =
             response.description.detailedDescription;
+
+        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
+
+        data.posterDescription = lastDescription;
+        data.lastPage = "Description";
+
+        JsonSaveSystem.Save(data);
 
         detailsText.text =
             lastDescription;
@@ -455,6 +495,15 @@ public class FullPosterImageAPI : MonoBehaviour
 
         currentRevisionCount++;
 
+        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
+
+        data.revisionPrompt = revisionPromptInput.text;
+        data.revisionCount = currentRevisionCount;
+        data.revisedImageUrl = latestImageUrl;
+        data.lastPage = "Revision";
+
+        JsonSaveSystem.Save(data);
+
         statusText.text =
             "Revision "
             + currentRevisionCount
@@ -615,6 +664,14 @@ public class FullPosterImageAPI : MonoBehaviour
         suggestionText.text =
             response.score.improvementSuggestion;
 
+        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
+
+        data.finalExplanation = finalExplanationInput.text;
+        data.score = response.score.total;
+        data.lastPage = "Score";
+
+        JsonSaveSystem.Save(data);
+
         scoreSpeechText =
          "Evaluation completed. "
 
@@ -728,6 +785,12 @@ public class FullPosterImageAPI : MonoBehaviour
 
     public void ResetSystem()
     {
+
+
+        participantNameInput.text = "";
+        institutionInput.text = "";
+        
+
         currentRevisionCount = 0;
 
         latestImageUrl = "";
@@ -758,19 +821,14 @@ public class FullPosterImageAPI : MonoBehaviour
         revisionPosterRawImage.texture = null;
         reviewPosterRawImage.texture = null;
 
-        promptPanel.SetActive(false);
-        outputPanel.SetActive(false);
-        descriptionPanel.SetActive(false);
-        revisionPanel.SetActive(false);
-        finalExplanationPanel.SetActive(false);
-        scorePanel.SetActive(false);
-        posterReviewPanel.SetActive(false);
+        
 
-        mainMenuPanel.SetActive(true);
+        
 
         AndroidTTS.Speak(
             "System reset completed. Returning to home page."
         );
+
     }
 
 

@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 4001517242368220474}
   - component: {fileID: 9061283093652089842}
   - component: {fileID: 8136087405653311433}
+  - component: {fileID: 3265503276981267511}
   m_Layer: 5
   m_Name: ID CARD
   m_TagString: Untagged
@@ -107,6 +108,23 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!114 &3265503276981267511
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 232937939751726830}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2c6bf4ea36511e43bc013cc036898f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LeaderboardItem
+  rankText: {fileID: 2986589640117311034}
+  nameText: {fileID: 3800774172435984576}
+  categoryText: {fileID: 2902980865339333538}
+  institutionText: {fileID: 3646127884365020435}
+  scoreText: {fileID: 4713316348954266962}
 --- !u!1 &391452176088055273
 GameObject:
   m_ObjectHideFlags: 0
@@ -172,7 +190,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 67
+  m_text: 00
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 2c868b9672473cc4c9d5a92d2d81319d, type: 2}
   m_sharedMaterial: {fileID: 1681294760521932752, guid: 2c868b9672473cc4c9d5a92d2d81319d, type: 2}
@@ -309,7 +327,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 1
+  m_text: 00
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 2c868b9672473cc4c9d5a92d2d81319d, type: 2}
   m_sharedMaterial: {fileID: 1681294760521932752, guid: 2c868b9672473cc4c9d5a92d2d81319d, type: 2}
@@ -446,7 +464,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: n'golo kante
+  m_text: NAME
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 2c868b9672473cc4c9d5a92d2d81319d, type: 2}
   m_sharedMaterial: {fileID: 1681294760521932752, guid: 2c868b9672473cc4c9d5a92d2d81319d, type: 2}
@@ -583,7 +601,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: low vision
+  m_text: CATEGORY
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 2c868b9672473cc4c9d5a92d2d81319d, type: 2}
   m_sharedMaterial: {fileID: 1681294760521932752, guid: 2c868b9672473cc4c9d5a92d2d81319d, type: 2}
@@ -720,7 +738,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: al-ittihad
+  m_text: INSTITUTION
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 2c868b9672473cc4c9d5a92d2d81319d, type: 2}
   m_sharedMaterial: {fileID: 1681294760521932752, guid: 2c868b9672473cc4c9d5a92d2d81319d, type: 2}
