@@ -6,10 +6,6 @@ public class TTSManager : MonoBehaviour
     {
         AndroidTTS.Initialize();
 
-        Debug.Log(
-            "TTS Status: " +
-            AndroidTTS.GetTTSStatus()
-        );
     }
 
     private void OnDestroy()
