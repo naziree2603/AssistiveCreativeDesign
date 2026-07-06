@@ -34,6 +34,16 @@ public class ParticipantData
     // Score
     public float score;
 
+    public int promptQuality;
+    public int posterMessage;
+    public int designQuality;
+    public int accessibilityUnderstanding;
+    public int revisionProcessScore;
+    public int finalExplanationScore;
+
+    public string feedback;
+    public string improvementSuggestion;
+
     // Date
     public string createdDate;
 }
