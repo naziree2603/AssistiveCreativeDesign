@@ -20,6 +20,8 @@ public class ParticipantData
     // AI Image
     public string originalImageUrl;
     public string revisedImageUrl;
+    public string originalLocalPath;
+    public string revisedLocalPath;
 
     // Description
     public string posterDescription;

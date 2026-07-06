@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.IO;
 using System.Security.Policy;
 using System.Text;
 using TMPro;
@@ -203,6 +204,9 @@ public class FullPosterImageAPI : MonoBehaviour
 
     private Texture2D originalPosterTexture;
     private Texture2D revisedPosterTexture;
+
+
+
     private IEnumerator DownloadImage(string imageUrl, bool isRevision = false, bool isLoadingSavedData = false)
     {
         statusText.text = "Downloading poster image...";
@@ -217,6 +221,8 @@ public class FullPosterImageAPI : MonoBehaviour
         }
 
         Texture2D texture = DownloadHandlerTexture.GetContent(request);
+
+        SaveImageToDevice(texture, isRevision);
 
         if (!isRevision)
         {
@@ -267,6 +273,89 @@ public class FullPosterImageAPI : MonoBehaviour
             StartCoroutine(DescribeGeneratedImage());
         }
 
+    }
+
+    private void SaveImageToDevice(Texture2D texture, bool isRevision)
+    {
+        byte[] png = texture.EncodeToPNG();
+
+        string folder = Path.Combine(Application.persistentDataPath, "Posters");
+
+        if (!Directory.Exists(folder))
+            Directory.CreateDirectory(folder);
+
+        string username = AccountManager.Instance.CurrentAccount.username;
+
+        string filename = isRevision ?
+            username + "_revision.png" :
+            username + "_original.png";
+
+        string path = Path.Combine(folder, filename);
+
+        File.WriteAllBytes(path, png);
+
+        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
+
+        if (isRevision)
+            data.revisedLocalPath = path;
+        else
+            data.originalLocalPath = path;
+
+        JsonSaveSystem.Save(data);
+
+        AccountManager.Instance.CurrentAccount.participant = data;
+        AccountSaveSystem.Save(AccountManager.Instance.CurrentAccount);
+
+        Debug.Log("Image saved: " + path);
+    }
+
+    private Texture2D LoadTexture(string path)
+    {
+        if (!System.IO.File.Exists(path))
+            return null;
+
+        byte[] bytes = System.IO.File.ReadAllBytes(path);
+
+        Texture2D tex = new Texture2D(2, 2);
+
+        tex.LoadImage(bytes);
+
+        return tex;
+    }
+
+    private void LoadOriginalPoster(string path)
+    {
+        Texture2D tex = LoadTexture(path);
+
+        if (tex == null)
+            return;
+
+        originalPosterTexture = tex;
+
+        posterRawImage.texture = tex;
+
+        descriptionRawImage.texture = tex;
+
+        // If no revision exists, use original on review page
+        if (string.IsNullOrEmpty(
+            ParticipantManager.Instance.CurrentParticipant.revisedLocalPath))
+        {
+            reviewPosterRawImage.texture = tex;
+        }
+    }
+
+    private void LoadRevisedPoster(string path)
+    {
+        Texture2D tex = LoadTexture(path);
+
+        if (tex == null)
+            return;
+
+        revisedPosterTexture = tex;
+
+        revisionPosterRawImage.texture = tex;
+
+        reviewPosterRawImage.texture = tex;
     }
 
     private IEnumerator DescribeGeneratedImage()
@@ -899,6 +988,22 @@ public class FullPosterImageAPI : MonoBehaviour
         if (!string.IsNullOrEmpty(data.revisedImageUrl))
         {
             StartCoroutine(DownloadImage(data.revisedImageUrl,true));
+        }
+
+        if (File.Exists(data.originalLocalPath))
+        {
+            if (!string.IsNullOrEmpty(data.originalLocalPath))
+            {
+                LoadOriginalPoster(data.originalLocalPath);
+            }
+        }
+
+        if (File.Exists(data.revisedLocalPath))
+        {
+            if (!string.IsNullOrEmpty(data.revisedLocalPath))
+            {
+                LoadRevisedPoster(data.revisedLocalPath);
+            }
         }
 
 

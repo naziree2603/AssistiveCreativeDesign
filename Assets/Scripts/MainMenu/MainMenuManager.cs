@@ -25,7 +25,7 @@ public class MainMenuManager : MonoBehaviour
 
     void Start()
     {
-        WelcomeSpeech();
+        
     }
 
   
@@ -33,7 +33,7 @@ public class MainMenuManager : MonoBehaviour
     void WelcomeSpeech()
     {
         AndroidTTS.Speak(
-            "Welcome to Intelligent Inclusive Assistive Design. Swipe left or right to navigate menu items. Double tap to activate a button."
+            "Welcome to Intelligent Inclusive Assistive Design."
         );
 
     }

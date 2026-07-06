@@ -14353,6 +14353,8 @@ MonoBehaviour:
       prompt: 
       originalImageUrl: 
       revisedImageUrl: 
+      originalLocalPath: 
+      revisedLocalPath: 
       posterDescription: 
       revisionPrompt: 
       revisionCount: 0
@@ -27855,7 +27857,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1147790487
 RectTransform:
   m_ObjectHideFlags: 0
@@ -27872,7 +27874,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -68.27911, y: 70.399536}
+  m_AnchoredPosition: {x: -68.27905, y: 70.399414}
   m_SizeDelta: {x: 136.55823, y: 140.79907}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1147790488
@@ -42065,8 +42067,7 @@ MonoBehaviour:
   m_Type: 2
   m_CustomHint: 1
   m_HintAsAudio: {fileID: 0}
-  m_Hint: Welcome to Assistive Creative Design. Swipe left or right to navigate menu
-    items. Double tap to activate a button.
+  m_Hint: Welcome to Intelligent Inclusive Assistive Design.
   m_HintIsLocalizationKey: 0
   m_IsInsideScrollView: 0
   m_IsInitialized: 1
@@ -42111,6 +42112,8 @@ MonoBehaviour:
     prompt: 
     originalImageUrl: 
     revisedImageUrl: 
+    originalLocalPath: 
+    revisedLocalPath: 
     posterDescription: 
     revisionPrompt: 
     revisionCount: 0
@@ -42474,7 +42477,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1760007564
 RectTransform:
   m_ObjectHideFlags: 0
@@ -42491,7 +42494,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -220, y: 70.399536}
+  m_AnchoredPosition: {x: -220, y: 70.399414}
   m_SizeDelta: {x: 136.55823, y: 140.79907}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1760007565
