@@ -17,7 +17,7 @@ public class RegisterManager : MonoBehaviour
 
     public GameObject registerPanel;
 
-    public void Register()
+    public async void Register()
     {
         string username =
             usernameInput.text.Trim();
@@ -43,30 +43,20 @@ public class RegisterManager : MonoBehaviour
         }
 
 
-        if (AccountSaveSystem.Exists(username))
+        bool success = await FirebaseAuthManager.Instance.Register(username + "@iiad.com", password, username);
+
+        if (!success)
         {
             messageText.text =
-                "Username already exists.";
+                "Registration failed.";
 
             return;
         }
 
-        AccountData account =
-            new AccountData();
-
-        account.username = username;
-
-        account.password = password;
-
-        account.participant =
-            new ParticipantData();
-
-        AccountSaveSystem.Save(account);
-
         messageText.text =
             "Registration successful.";
 
-        
+
     }
 
     public void Back()

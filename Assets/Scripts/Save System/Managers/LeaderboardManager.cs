@@ -14,16 +14,21 @@ public class LeaderboardManager : MonoBehaviour
         LoadLeaderboard();
     }
 
-    public void LoadLeaderboard()
+    public async void LoadLeaderboard()
     {
-        // Clear old rows
+        if (FirestoreManager.Instance == null)
+        {
+            Debug.LogError("FirestoreManager not found.");
+            return;
+        }
+
         foreach (Transform child in content)
         {
             Destroy(child.gameObject);
         }
 
         List<ParticipantData> participants =
-            LeaderboardLoader.LoadAll();
+            await FirestoreManager.Instance.LoadLeaderboard();
 
         for (int i = 0; i < participants.Count; i++)
         {

@@ -94,27 +94,15 @@ public class FullPosterImageAPI : MonoBehaviour
 
     public void StartParticipant()
     {
-        ParticipantData data = new ParticipantData();
+        ParticipantManager.Instance.CreateNewParticipant();
 
-        data.participantID = Guid.NewGuid().ToString();
+        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
 
         data.participantName = participantNameInput.text;
-
         data.institution = institutionInput.text;
+        data.category = categoryDropdown.options[categoryDropdown.value].text;
 
-        data.category =
-            categoryDropdown.options[categoryDropdown.value].text;
-
-        data.createdDate = DateTime.Now.ToString();
-
-        // BOTH
-        ParticipantManager.Instance.CurrentParticipant = data;
-
-        AccountManager.Instance.CurrentAccount.participant = data;
-
-        JsonSaveSystem.Save(data);
-
-        AccountSaveSystem.Save(AccountManager.Instance.CurrentAccount);
+        ParticipantManager.Instance.Save();
     }
 
     public void GenerateFullPosterImage()
@@ -185,19 +173,20 @@ public class FullPosterImageAPI : MonoBehaviour
         latestPromptUsed = response.promptUsed;
         latestStoragePath = response.storagePath;
 
+        if (ParticipantManager.Instance.CurrentParticipant == null)
+        {
+            ParticipantManager.Instance.CreateNewParticipant();
+        }
+
         ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
 
         data.prompt = promptInput.text;
         data.originalImageUrl = latestImageUrl;
+        data.promptUsed = latestPromptUsed;
+        data.storagePath = latestStoragePath;
         data.lastPage = "Output";
 
-        JsonSaveSystem.Save(data);
-
-        AccountManager.Instance.CurrentAccount.participant = data;
-
-        AccountSaveSystem.Save(
-            AccountManager.Instance.CurrentAccount);
-
+        ParticipantManager.Instance.Save();
 
         yield return StartCoroutine(DownloadImage(response.imageUrl));
     }
@@ -221,6 +210,38 @@ public class FullPosterImageAPI : MonoBehaviour
         }
 
         Texture2D texture = DownloadHandlerTexture.GetContent(request);
+
+        // Upload to Cloudinary
+        bool uploadFinished = false;
+
+        CloudinaryManager.Instance.UploadImage(texture, (cloudUrl) =>
+        {
+            if (!string.IsNullOrEmpty(cloudUrl))
+            {
+                if (!isRevision)
+                {
+                    ParticipantManager.Instance.CurrentParticipant.originalImageUrl =
+                        cloudUrl;
+                }
+                else
+                {
+                    ParticipantManager.Instance.CurrentParticipant.revisedImageUrl =
+                        cloudUrl;
+                }
+
+                ParticipantManager.Instance.Save();
+
+                Debug.Log("Cloudinary Upload Success");
+            }
+            else
+            {
+                Debug.LogError("Cloudinary Upload Failed");
+            }
+
+            uploadFinished = true;
+        });
+
+        yield return new WaitUntil(() => uploadFinished);
 
         SaveImageToDevice(texture, isRevision);
 
@@ -284,11 +305,11 @@ public class FullPosterImageAPI : MonoBehaviour
         if (!Directory.Exists(folder))
             Directory.CreateDirectory(folder);
 
-        string username = AccountManager.Instance.CurrentAccount.username;
+        string uid = FirebaseAuthManager.Instance.GetUID();
 
         string filename = isRevision ?
-            username + "_revision.png" :
-            username + "_original.png";
+            uid + "_revision.png" :
+            uid + "_original.png";
 
         string path = Path.Combine(folder, filename);
 
@@ -301,10 +322,7 @@ public class FullPosterImageAPI : MonoBehaviour
         else
             data.originalLocalPath = path;
 
-        JsonSaveSystem.Save(data);
-
-        AccountManager.Instance.CurrentAccount.participant = data;
-        AccountSaveSystem.Save(AccountManager.Instance.CurrentAccount);
+        ParticipantManager.Instance.Save();
 
         Debug.Log("Image saved: " + path);
     }
@@ -413,12 +431,7 @@ public class FullPosterImageAPI : MonoBehaviour
         data.posterDescription = lastDescription;
         data.lastPage = "Description";
 
-        JsonSaveSystem.Save(data);
-
-        AccountManager.Instance.CurrentAccount.participant = data;
-
-        AccountSaveSystem.Save(
-            AccountManager.Instance.CurrentAccount);
+        ParticipantManager.Instance.Save();
 
         detailsText.text =
             lastDescription;
@@ -617,12 +630,7 @@ public class FullPosterImageAPI : MonoBehaviour
         data.revisedImageUrl = latestImageUrl;
         data.lastPage = "Revision";
 
-        JsonSaveSystem.Save(data);
-
-        AccountManager.Instance.CurrentAccount.participant = data;
-
-        AccountSaveSystem.Save(
-            AccountManager.Instance.CurrentAccount);
+        ParticipantManager.Instance.Save();
 
         statusText.text =
             "Revision "
@@ -754,8 +762,7 @@ public class FullPosterImageAPI : MonoBehaviour
 
 
     }
-    private void DisplayScore(
-    ScoreResponse response)
+    private void DisplayScore(ScoreResponse response)
     {
         promptQualityText.text =
             response.score.promptQuality + "/20";
@@ -784,37 +791,33 @@ public class FullPosterImageAPI : MonoBehaviour
         suggestionText.text =
             response.score.improvementSuggestion;
 
-        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
+        
 
-        data.finalExplanation = finalExplanationInput.text;
+        ParticipantManager.Instance.CurrentParticipant.finalExplanation = finalExplanationInput.text;
 
-        data.score = response.score.total;
+        ParticipantManager.Instance.CurrentParticipant.score = response.score.total;
 
-        data.promptQuality = response.score.promptQuality;
+        ParticipantManager.Instance.CurrentParticipant.promptQuality = response.score.promptQuality;
 
-        data.posterMessage = response.score.posterMessage;
+        ParticipantManager.Instance.CurrentParticipant.posterMessage = response.score.posterMessage;
 
-        data.designQuality = response.score.designQuality;
+        ParticipantManager.Instance.CurrentParticipant.designQuality = response.score.designQuality;
 
-        data.accessibilityUnderstanding = response.score.accessibilityUnderstanding;
+        ParticipantManager.Instance.CurrentParticipant.accessibilityUnderstanding = response.score.accessibilityUnderstanding;
 
-        data.revisionProcessScore = response.score.revisionProcess;
+        ParticipantManager.Instance.CurrentParticipant.revisionProcessScore = response.score.revisionProcess;
 
-        data.finalExplanationScore = response.score.finalExplanation;
+        ParticipantManager.Instance.CurrentParticipant.finalExplanationScore = response.score.finalExplanation;
 
-        data.feedback = response.score.feedback;
+        ParticipantManager.Instance.CurrentParticipant.feedback = response.score.feedback;
 
-        data.improvementSuggestion = response.score.improvementSuggestion;
+        ParticipantManager.Instance.CurrentParticipant.improvementSuggestion = response.score.improvementSuggestion;
 
 
-        data.lastPage = "Score";
+        ParticipantManager.Instance.CurrentParticipant.lastPage = "Score";
 
-        JsonSaveSystem.Save(data);
 
-        AccountManager.Instance.CurrentAccount.participant = data;
-
-        AccountSaveSystem.Save(
-            AccountManager.Instance.CurrentAccount);
+        ParticipantManager.Instance.Save();
 
         scoreSpeechText =
          "Evaluation completed. "
@@ -930,7 +933,7 @@ public class FullPosterImageAPI : MonoBehaviour
             AndroidTTS.Speak(
                 "No revisions were made. Opening original poster."
             );
-        }
+        } 
     }
 
  
@@ -971,90 +974,111 @@ public class FullPosterImageAPI : MonoBehaviour
 
     public void LoadParticipant()
     {
-        ParticipantData data =
-            ParticipantManager.Instance.CurrentParticipant;
+        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
 
         if (data == null)
+        {
+            Debug.Log("No participant data loaded.");
             return;
-
-        if (string.IsNullOrEmpty(data.participantName))
-            return;
-
-        if (!string.IsNullOrEmpty(data.originalImageUrl))
-        {
-            StartCoroutine(DownloadImage(data.originalImageUrl,false,true));
         }
 
-        if (!string.IsNullOrEmpty(data.revisedImageUrl))
-        {
-            StartCoroutine(DownloadImage(data.revisedImageUrl,true));
-        }
-
-        if (File.Exists(data.originalLocalPath))
-        {
-            if (!string.IsNullOrEmpty(data.originalLocalPath))
-            {
-                LoadOriginalPoster(data.originalLocalPath);
-            }
-        }
-
-        if (File.Exists(data.revisedLocalPath))
-        {
-            if (!string.IsNullOrEmpty(data.revisedLocalPath))
-            {
-                LoadRevisedPoster(data.revisedLocalPath);
-            }
-        }
-
-
+        //---------------------------------------
         // Participant
+        //---------------------------------------
+
         participantNameInput.text = data.participantName;
         institutionInput.text = data.institution;
 
+        // Restore Category
+        for (int i = 0; i < categoryDropdown.options.Count; i++)
+        {
+            if (categoryDropdown.options[i].text == data.category)
+            {
+                categoryDropdown.value = i;
+                break;
+            }
+        }
+
+        //---------------------------------------
         // Prompt
+        //---------------------------------------
+
         promptInput.text = data.prompt;
 
+        //---------------------------------------
         // Revision
+        //---------------------------------------
+
         revisionPromptInput.text = data.revisionPrompt;
 
+        //---------------------------------------
         // Final Explanation
-        finalExplanationInput.text =
-            data.finalExplanation;
+        //---------------------------------------
 
+        finalExplanationInput.text = data.finalExplanation;
+
+        //---------------------------------------
         // Description
-        detailsText.text =
-            data.posterDescription;
+        //---------------------------------------
 
+        detailsText.text = data.posterDescription;
+
+        //---------------------------------------
         // Score
-        promptQualityText.text =
-            data.promptQuality + "/20";
+        //---------------------------------------
 
-        posterMessageText.text =
-            data.posterMessage + "/20";
+        promptQualityText.text = data.promptQuality + "/20";
+        posterMessageText.text = data.posterMessage + "/20";
+        designOutputText.text = data.designQuality + "/20";
+        accessibilityText.text = data.accessibilityUnderstanding + "/20";
+        revisionText.text = data.revisionProcessScore + "/10";
+        finalExplanationScoreText.text = data.finalExplanationScore + "/10";
+        totalScoreText.text = data.score + "/100";
 
-        designOutputText.text =
-            data.designQuality + "/20";
+        feedbackText.text = data.feedback;
+        suggestionText.text = data.improvementSuggestion;
 
-        accessibilityText.text =
-            data.accessibilityUnderstanding + "/20";
+        //---------------------------------------
+        // Internal Variables
+        //---------------------------------------
 
-        revisionText.text =
-            data.revisionProcessScore + "/10";
+        latestImageUrl = data.originalImageUrl;
 
-        finalExplanationScoreText.text =
-            data.finalExplanationScore + "/10";
+        currentRevisionCount = data.revisionCount;
 
-        totalScoreText.text =
-            data.score + "/100";
+        //---------------------------------------
+        // Load Local Images
+        //---------------------------------------
 
-        feedbackText.text =
-            data.feedback;
+        if (!string.IsNullOrEmpty(data.originalLocalPath) &&
+            File.Exists(data.originalLocalPath))
+        {
+            LoadOriginalPoster(data.originalLocalPath);
+        }
 
-        suggestionText.text =
-            data.improvementSuggestion;
+        if (!string.IsNullOrEmpty(data.revisedLocalPath) &&
+            File.Exists(data.revisedLocalPath))
+        {
+            LoadRevisedPoster(data.revisedLocalPath);
+        }
 
-        latestImageUrl =
-            data.originalImageUrl;
+        //---------------------------------------
+        // Download Images if Local Missing
+        //---------------------------------------
+
+        if (originalPosterTexture == null &&
+            !string.IsNullOrEmpty(data.originalImageUrl))
+        {
+            StartCoroutine(DownloadImage(data.originalImageUrl, false, true));
+        }
+
+        if (revisedPosterTexture == null &&
+            !string.IsNullOrEmpty(data.revisedImageUrl))
+        {
+            StartCoroutine(DownloadImage(data.revisedImageUrl, true));
+        }
+
+        Debug.Log("Participant restored successfully.");
     }
 
     public void ResetSystem()
@@ -1063,7 +1087,8 @@ public class FullPosterImageAPI : MonoBehaviour
 
         participantNameInput.text = "";
         institutionInput.text = "";
-        
+        categoryDropdown.value = 0;
+
 
         currentRevisionCount = 0;
 

@@ -1,10 +1,14 @@
 using System;
+using Firebase.Firestore;
+
 
 [Serializable]
 public class ParticipantData
 {
     // Unique ID
     public string participantID;
+
+
 
     // Participant Info
     public string participantName;
@@ -22,6 +26,8 @@ public class ParticipantData
     public string revisedImageUrl;
     public string originalLocalPath;
     public string revisedLocalPath;
+    public string promptUsed;
+    public string storagePath;
 
     // Description
     public string posterDescription;

@@ -10268,6 +10268,76 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ReplayInput
   inputField: {fileID: 1549313944}
+--- !u!1 &358965353
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 358965355}
+  - component: {fileID: 358965354}
+  - component: {fileID: 358965356}
+  - component: {fileID: 358965357}
+  m_Layer: 0
+  m_Name: FirebaseManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &358965354
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 358965353}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f75c5e22e84a99d4fa7d8ff885a8eae5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FirebaseInitializer
+--- !u!4 &358965355
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 358965353}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 579.24927, y: 1310.2278, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &358965356
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 358965353}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dcdde48967ef42943983de899c93d507, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FirebaseAuthManager
+--- !u!114 &358965357
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 358965353}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f63a33d27bd06e14b974985d432ec346, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FirestoreManager
 --- !u!1 &359675503
 GameObject:
   m_ObjectHideFlags: 0
@@ -14342,8 +14412,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AccountManager
   CurrentAccount:
+    uid: 
     username: 
-    password: 
     participant:
       participantID: 
       participantName: 
@@ -14355,6 +14425,8 @@ MonoBehaviour:
       revisedImageUrl: 
       originalLocalPath: 
       revisedLocalPath: 
+      promptUsed: 
+      storagePath: 
       posterDescription: 
       revisionPrompt: 
       revisionCount: 0
@@ -27766,6 +27838,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1145949974}
   - component: {fileID: 1145949975}
+  - component: {fileID: 1145949976}
   m_Layer: 0
   m_Name: PosterAPIManager
   m_TagString: Untagged
@@ -27839,6 +27912,24 @@ MonoBehaviour:
   reviewPosterRawImage: {fileID: 1590134991}
   originalPreviewPanel: {fileID: 938977099}
   originalPreviewRawImage: {fileID: 974537186}
+--- !u!114 &1145949976
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1145949972}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38ffe51da11f4b644ae07a303de50e93, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParticipantAutoSave
+  participantNameInput: {fileID: 1907392657}
+  institutionInput: {fileID: 1941484234}
+  categoryDropdown: {fileID: 1164444882}
+  promptInput: {fileID: 1250498156}
+  revisionPromptInput: {fileID: 1545799383}
+  finalExplanationInput: {fileID: 1549313944}
 --- !u!1 &1147790486
 GameObject:
   m_ObjectHideFlags: 0
@@ -28566,7 +28657,19 @@ MonoBehaviour:
       m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_OnValueChanged:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1145949976}
+        m_TargetAssemblyTypeName: ParticipantAutoSave, Assembly-CSharp
+        m_MethodName: SaveParticipantDetails
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   m_AlphaFadeSpeed: 0.15
 --- !u!114 &1164444883
 MonoBehaviour:
@@ -31295,7 +31398,19 @@ MonoBehaviour:
   m_CharacterLimit: 0
   m_OnEndEdit:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1145949976}
+        m_TargetAssemblyTypeName: ParticipantAutoSave, Assembly-CSharp
+        m_MethodName: SavePrompt
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   m_OnSubmit:
     m_PersistentCalls:
       m_Calls: []
@@ -36928,7 +37043,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 123566, guid: 89f4a0ae7ea3fa84ea56c91291d7bd87, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 171630, guid: 89f4a0ae7ea3fa84ea56c91291d7bd87, type: 3}
       propertyPath: m_IsActive
@@ -38192,7 +38307,19 @@ MonoBehaviour:
   m_CharacterLimit: 0
   m_OnEndEdit:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1145949976}
+        m_TargetAssemblyTypeName: ParticipantAutoSave, Assembly-CSharp
+        m_MethodName: SaveRevision
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   m_OnSubmit:
     m_PersistentCalls:
       m_Calls: []
@@ -38614,7 +38741,19 @@ MonoBehaviour:
   m_CharacterLimit: 0
   m_OnEndEdit:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1145949976}
+        m_TargetAssemblyTypeName: ParticipantAutoSave, Assembly-CSharp
+        m_MethodName: SaveFinalExplanation
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   m_OnSubmit:
     m_PersistentCalls:
       m_Calls: []
@@ -39100,6 +39239,52 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1558690090}
   m_CullTransparentMesh: 1
+--- !u!1 &1567690557
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1567690559}
+  - component: {fileID: 1567690560}
+  m_Layer: 0
+  m_Name: CloudinaryManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1567690559
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1567690557}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 762.37823, y: 1022.30524, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1567690560
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1567690557}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ab8afcd0823ba845a658d7dafa1cc90, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CloudinaryManager
+  cloudName: noajv4ek
+  uploadPreset: unity_posters
 --- !u!1 &1584761007
 GameObject:
   m_ObjectHideFlags: 0
@@ -42114,6 +42299,8 @@ MonoBehaviour:
     revisedImageUrl: 
     originalLocalPath: 
     revisedLocalPath: 
+    promptUsed: 
+    storagePath: 
     posterDescription: 
     revisionPrompt: 
     revisionCount: 0
@@ -46055,7 +46242,19 @@ MonoBehaviour:
   m_CharacterLimit: 0
   m_OnEndEdit:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1145949976}
+        m_TargetAssemblyTypeName: ParticipantAutoSave, Assembly-CSharp
+        m_MethodName: SaveParticipantDetails
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   m_OnSubmit:
     m_PersistentCalls:
       m_Calls: []
@@ -46486,7 +46685,19 @@ MonoBehaviour:
   m_CharacterLimit: 0
   m_OnEndEdit:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1145949976}
+        m_TargetAssemblyTypeName: ParticipantAutoSave, Assembly-CSharp
+        m_MethodName: SaveParticipantDetails
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   m_OnSubmit:
     m_PersistentCalls:
       m_Calls: []
@@ -50314,6 +50525,8 @@ SceneRoots:
   - {fileID: 323990257}
   - {fileID: 1697539313}
   - {fileID: 576485390}
+  - {fileID: 358965355}
   - {fileID: 1828661569}
   - {fileID: 1489266925}
+  - {fileID: 1567690559}
   - {fileID: 961509995}

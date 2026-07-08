@@ -17,49 +17,40 @@ public class LoginManager : MonoBehaviour
 
     public FullPosterImageAPI posterSystem;
 
-    public void Login()
+    public async void Login()
     {
         string username = usernameInput.text.Trim();
         string password = passwordInput.text;
 
-        if (username == "")
+        if (string.IsNullOrWhiteSpace(username))
         {
             messageText.text = "Please enter username.";
             return;
         }
 
-        if (password == "")
+        if (string.IsNullOrWhiteSpace(password))
         {
             messageText.text = "Please enter password.";
             return;
         }
 
-        AccountData account = AccountSaveSystem.Load(username);
+        bool success = await FirebaseAuthManager.Instance.Login(username + "@iiad.com", password);
 
-        if (account == null)
+        if (!success)
         {
-            messageText.text = "Account not found.";
+            messageText.text = "Invalid username or password.";
+
             return;
         }
 
-        if (account.password != password)
-        {
-            messageText.text = "Incorrect password.";
-            return;
-        }
-
-        // Login success
-        AccountManager.Instance.CurrentAccount = account;
-
-        ParticipantManager.Instance.CurrentParticipant = account.participant;
+        // Wait until Firestore finishes loading
+        await ParticipantManager.Instance.Load();
 
         posterSystem.LoadParticipant();
 
         messageText.text = "Login successful.";
 
         loginPanel.SetActive(false);
-
-        posterSystem.CloseAllPanels();
 
         mainMenuPanel.SetActive(true);
 
@@ -72,49 +63,24 @@ public class LoginManager : MonoBehaviour
         registerPanel.SetActive(true);
     }
 
-
     public void Logout()
     {
-        // Reset current account
-        AccountManager.Instance.CurrentAccount = null;
+        FirebaseAuthManager.Instance.Logout();
 
-        // Reset all poster data/UI
+        ParticipantManager.Instance.ResetParticipant();
+
         posterSystem.ResetSystem();
 
-        // Hide all pages
         mainMenuPanel.SetActive(false);
-
-        // Return to Login
         loginPanel.SetActive(true);
 
-        // Clear login fields
         usernameInput.text = "";
         passwordInput.text = "";
 
         messageText.text = "";
 
-        AndroidTTS.Speak(
-            "You have logged out."
-        );
+        AndroidTTS.Speak("You have logged out.");
     }
 
-    public void DeleteAllAccounts()
-    {
-        AccountSaveSystem.DeleteAllAccounts();
 
-        messageText.text = "All accounts deleted.";
-
-        Debug.Log("All accounts deleted.");
-    }
-
-    public void ShowAccounts()
-    {
-        List<string> accounts =
-            AccountSaveSystem.GetAllAccounts();
-
-        foreach (string account in accounts)
-        {
-            Debug.Log(account);
-        }
-    }
 }

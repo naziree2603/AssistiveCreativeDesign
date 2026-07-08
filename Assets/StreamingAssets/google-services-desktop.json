@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "206802698105",
+    "project_id": "iiad-2b047",
+    "storage_bucket": "iiad-2b047.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:206802698105:android:9666fed477f19f6add79a8",
+        "android_client_info": {
+          "package_name": "com.goolee.iiadv2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAvwJGlTQsejpCxaEido1gv2nHDE4PLe2g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
