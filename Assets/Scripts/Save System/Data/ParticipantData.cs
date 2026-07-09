@@ -24,8 +24,6 @@ public class ParticipantData
     // AI Image
     public string originalImageUrl;
     public string revisedImageUrl;
-    public string originalLocalPath;
-    public string revisedLocalPath;
     public string promptUsed;
     public string storagePath;
 

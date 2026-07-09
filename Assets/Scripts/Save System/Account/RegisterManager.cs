@@ -43,18 +43,16 @@ public class RegisterManager : MonoBehaviour
         }
 
 
-        bool success = await FirebaseAuthManager.Instance.Register(username + "@iiad.com", password, username);
+        bool success = await FirestoreAccountManager.Instance.Register(username, password);
 
         if (!success)
         {
-            messageText.text =
-                "Registration failed.";
+            messageText.text = "Registration failed.";
 
             return;
         }
 
-        messageText.text =
-            "Registration successful.";
+        messageText.text ="Registration successful.";
 
 
     }

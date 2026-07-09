@@ -10280,6 +10280,8 @@ GameObject:
   - component: {fileID: 358965354}
   - component: {fileID: 358965356}
   - component: {fileID: 358965357}
+  - component: {fileID: 358965358}
+  - component: {fileID: 358965359}
   m_Layer: 0
   m_Name: FirebaseManager
   m_TagString: Untagged
@@ -10338,6 +10340,59 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f63a33d27bd06e14b974985d432ec346, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FirestoreManager
+--- !u!114 &358965358
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 358965353}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b18c2412cb307d4f867fccadefe624d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FirebaseStorageManager
+--- !u!114 &358965359
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 358965353}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e174828c126da794ca6161a097654327, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FirestoreAccountManager
+  CurrentAccount:
+    documentID: 
+    username: 
+    password: 
+    participant:
+      participantID: 
+      participantName: 
+      institution: 
+      category: 
+      lastPage: 
+      prompt: 
+      originalImageUrl: 
+      revisedImageUrl: 
+      promptUsed: 
+      storagePath: 
+      posterDescription: 
+      revisionPrompt: 
+      revisionCount: 0
+      finalExplanation: 
+      score: 0
+      promptQuality: 0
+      posterMessage: 0
+      designQuality: 0
+      accessibilityUnderstanding: 0
+      revisionProcessScore: 0
+      finalExplanationScore: 0
+      feedback: 
+      improvementSuggestion: 
+      createdDate: 
 --- !u!1 &359675503
 GameObject:
   m_ObjectHideFlags: 0
@@ -14412,8 +14467,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AccountManager
   CurrentAccount:
-    uid: 
+    documentID: 
     username: 
+    password: 
     participant:
       participantID: 
       participantName: 
@@ -14423,8 +14479,6 @@ MonoBehaviour:
       prompt: 
       originalImageUrl: 
       revisedImageUrl: 
-      originalLocalPath: 
-      revisedLocalPath: 
       promptUsed: 
       storagePath: 
       posterDescription: 
@@ -39239,52 +39293,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1558690090}
   m_CullTransparentMesh: 1
---- !u!1 &1567690557
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1567690559}
-  - component: {fileID: 1567690560}
-  m_Layer: 0
-  m_Name: CloudinaryManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1567690559
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1567690557}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 762.37823, y: 1022.30524, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1567690560
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1567690557}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0ab8afcd0823ba845a658d7dafa1cc90, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CloudinaryManager
-  cloudName: noajv4ek
-  uploadPreset: unity_posters
 --- !u!1 &1584761007
 GameObject:
   m_ObjectHideFlags: 0
@@ -42297,8 +42305,6 @@ MonoBehaviour:
     prompt: 
     originalImageUrl: 
     revisedImageUrl: 
-    originalLocalPath: 
-    revisedLocalPath: 
     promptUsed: 
     storagePath: 
     posterDescription: 
@@ -50528,5 +50534,4 @@ SceneRoots:
   - {fileID: 358965355}
   - {fileID: 1828661569}
   - {fileID: 1489266925}
-  - {fileID: 1567690559}
   - {fileID: 961509995}

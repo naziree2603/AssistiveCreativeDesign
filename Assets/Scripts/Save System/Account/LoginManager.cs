@@ -34,27 +34,30 @@ public class LoginManager : MonoBehaviour
             return;
         }
 
-        bool success = await FirebaseAuthManager.Instance.Login(username + "@iiad.com", password);
+        bool success = await FirestoreAccountManager.Instance.Login(username, password);
+
+        Debug.Log("Login Result: " + success);
 
         if (!success)
         {
             messageText.text = "Invalid username or password.";
-
             return;
         }
 
-        // Wait until Firestore finishes loading
+        Debug.Log("Loading Participant...");
+
         await ParticipantManager.Instance.Load();
+
+        Debug.Log("Participant Loaded.");
+
+        posterSystem.ResetSystem();
 
         posterSystem.LoadParticipant();
 
-        messageText.text = "Login successful.";
+        Debug.Log("Opening Main Menu.");
 
         loginPanel.SetActive(false);
-
         mainMenuPanel.SetActive(true);
-
-        AndroidTTS.Speak("Login successful. Opening main menu.");
     }
 
     public void OpenRegister()
@@ -65,7 +68,7 @@ public class LoginManager : MonoBehaviour
 
     public void Logout()
     {
-        FirebaseAuthManager.Instance.Logout();
+        FirestoreAccountManager.Instance.CurrentAccount = null;
 
         ParticipantManager.Instance.ResetParticipant();
 

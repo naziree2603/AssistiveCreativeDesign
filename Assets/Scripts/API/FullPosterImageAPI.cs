@@ -94,7 +94,10 @@ public class FullPosterImageAPI : MonoBehaviour
 
     public void StartParticipant()
     {
-        ParticipantManager.Instance.CreateNewParticipant();
+        if (ParticipantManager.Instance.CurrentParticipant == null)
+        {
+            ParticipantManager.Instance.CreateNewParticipant();
+        }
 
         ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
 
@@ -181,12 +184,12 @@ public class FullPosterImageAPI : MonoBehaviour
         ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
 
         data.prompt = promptInput.text;
-        data.originalImageUrl = latestImageUrl;
         data.promptUsed = latestPromptUsed;
         data.storagePath = latestStoragePath;
         data.lastPage = "Output";
 
         ParticipantManager.Instance.Save();
+
 
         yield return StartCoroutine(DownloadImage(response.imageUrl));
     }
@@ -211,39 +214,17 @@ public class FullPosterImageAPI : MonoBehaviour
 
         Texture2D texture = DownloadHandlerTexture.GetContent(request);
 
-        // Upload to Cloudinary
-        bool uploadFinished = false;
-
-        CloudinaryManager.Instance.UploadImage(texture, (cloudUrl) =>
+        // Upload only when generating a new poster
+        if (!isLoadingSavedData)
         {
-            if (!string.IsNullOrEmpty(cloudUrl))
-            {
-                if (!isRevision)
-                {
-                    ParticipantManager.Instance.CurrentParticipant.originalImageUrl =
-                        cloudUrl;
-                }
-                else
-                {
-                    ParticipantManager.Instance.CurrentParticipant.revisedImageUrl =
-                        cloudUrl;
-                }
+            var uploadTask =
+                FirebaseStorageManager.Instance.UploadParticipantImage(
+                    texture,
+                    isRevision);
 
-                ParticipantManager.Instance.Save();
+            yield return new WaitUntil(() => uploadTask.IsCompleted);
+        }
 
-                Debug.Log("Cloudinary Upload Success");
-            }
-            else
-            {
-                Debug.LogError("Cloudinary Upload Failed");
-            }
-
-            uploadFinished = true;
-        });
-
-        yield return new WaitUntil(() => uploadFinished);
-
-        SaveImageToDevice(texture, isRevision);
 
         if (!isRevision)
         {
@@ -296,36 +277,9 @@ public class FullPosterImageAPI : MonoBehaviour
 
     }
 
-    private void SaveImageToDevice(Texture2D texture, bool isRevision)
-    {
-        byte[] png = texture.EncodeToPNG();
+ 
 
-        string folder = Path.Combine(Application.persistentDataPath, "Posters");
-
-        if (!Directory.Exists(folder))
-            Directory.CreateDirectory(folder);
-
-        string uid = FirebaseAuthManager.Instance.GetUID();
-
-        string filename = isRevision ?
-            uid + "_revision.png" :
-            uid + "_original.png";
-
-        string path = Path.Combine(folder, filename);
-
-        File.WriteAllBytes(path, png);
-
-        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
-
-        if (isRevision)
-            data.revisedLocalPath = path;
-        else
-            data.originalLocalPath = path;
-
-        ParticipantManager.Instance.Save();
-
-        Debug.Log("Image saved: " + path);
-    }
+   
 
     private Texture2D LoadTexture(string path)
     {
@@ -354,12 +308,7 @@ public class FullPosterImageAPI : MonoBehaviour
 
         descriptionRawImage.texture = tex;
 
-        // If no revision exists, use original on review page
-        if (string.IsNullOrEmpty(
-            ParticipantManager.Instance.CurrentParticipant.revisedLocalPath))
-        {
-            reviewPosterRawImage.texture = tex;
-        }
+
     }
 
     private void LoadRevisedPoster(string path)
@@ -817,7 +766,7 @@ public class FullPosterImageAPI : MonoBehaviour
         ParticipantManager.Instance.CurrentParticipant.lastPage = "Score";
 
 
-        ParticipantManager.Instance.Save();
+        
 
         scoreSpeechText =
          "Evaluation completed. "
@@ -857,14 +806,27 @@ public class FullPosterImageAPI : MonoBehaviour
          + response.score.improvementSuggestion;
 
 
-        LeaderboardManager leaderboard = FindFirstObjectByType<LeaderboardManager>();
+        StartCoroutine(SaveScoreAndRefreshLeaderboard());
+
+
+    }
+
+    private IEnumerator SaveScoreAndRefreshLeaderboard()
+    {
+        var saveTask =
+            ParticipantManager.Instance.Save();
+
+        yield return new WaitUntil(() => saveTask.IsCompleted);
+
+        LeaderboardManager leaderboard =
+            FindFirstObjectByType<LeaderboardManager>();
 
         if (leaderboard != null)
         {
             leaderboard.LoadLeaderboard();
         }
 
-
+        Debug.Log("Leaderboard refreshed.");
     }
 
     public void ReadScore()
@@ -1042,41 +1004,30 @@ public class FullPosterImageAPI : MonoBehaviour
         // Internal Variables
         //---------------------------------------
 
-        latestImageUrl = data.originalImageUrl;
+        if (!string.IsNullOrEmpty(data.revisedImageUrl))
+        {
+            latestImageUrl = data.revisedImageUrl;
+        }
+        else
+        {
+            latestImageUrl = data.originalImageUrl;
+        }
 
         currentRevisionCount = data.revisionCount;
 
         //---------------------------------------
         // Load Local Images
         //---------------------------------------
-
-        if (!string.IsNullOrEmpty(data.originalLocalPath) &&
-            File.Exists(data.originalLocalPath))
-        {
-            LoadOriginalPoster(data.originalLocalPath);
-        }
-
-        if (!string.IsNullOrEmpty(data.revisedLocalPath) &&
-            File.Exists(data.revisedLocalPath))
-        {
-            LoadRevisedPoster(data.revisedLocalPath);
-        }
-
-        //---------------------------------------
-        // Download Images if Local Missing
-        //---------------------------------------
-
-        if (originalPosterTexture == null &&
-            !string.IsNullOrEmpty(data.originalImageUrl))
+        if (!string.IsNullOrEmpty(data.originalImageUrl))
         {
             StartCoroutine(DownloadImage(data.originalImageUrl, false, true));
         }
 
-        if (revisedPosterTexture == null &&
-            !string.IsNullOrEmpty(data.revisedImageUrl))
+        if (!string.IsNullOrEmpty(data.revisedImageUrl))
         {
-            StartCoroutine(DownloadImage(data.revisedImageUrl, true));
+            StartCoroutine(DownloadImage(data.revisedImageUrl, true, true));
         }
+
 
         Debug.Log("Participant restored successfully.");
     }

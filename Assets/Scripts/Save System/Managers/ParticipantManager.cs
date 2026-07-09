@@ -37,21 +37,14 @@ public class ParticipantManager : MonoBehaviour
     // Save Current Participant
     //--------------------------------------------------
 
-    public async void Save()
+    public async System.Threading.Tasks.Task Save()
     {
-        if (CurrentParticipant == null)
+        string documentID = FirestoreAccountManager.Instance.CurrentAccount.documentID;
+
+        if (string.IsNullOrEmpty(documentID))
             return;
 
-        string uid =
-            FirebaseAuthManager.Instance.GetUID();
-
-        if (string.IsNullOrEmpty(uid))
-            return;
-
-        await FirestoreManager.Instance.SaveParticipant(
-            uid,
-            CurrentParticipant
-        );
+        await FirestoreManager.Instance.SaveParticipant(documentID, CurrentParticipant);
     }
 
     //--------------------------------
@@ -60,20 +53,21 @@ public class ParticipantManager : MonoBehaviour
 
     public async System.Threading.Tasks.Task Load()
     {
-        string uid =
-            FirebaseAuthManager.Instance.GetUID();
+        string documentID = FirestoreAccountManager.Instance.CurrentAccount.documentID;
 
-        if (string.IsNullOrEmpty(uid))
+        if (string.IsNullOrEmpty(documentID))
             return;
 
+        CurrentParticipant = null;
+
         CurrentParticipant =
-            await FirestoreManager.Instance.LoadParticipant(uid);
+            await FirestoreManager.Instance.LoadParticipant(documentID);
 
         if (CurrentParticipant == null)
         {
             CreateNewParticipant();
 
-            Debug.Log("New participant created.");
+            await Save();   // Save an empty participant for the new account
         }
     }
 
