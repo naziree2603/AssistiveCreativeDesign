@@ -28,17 +28,36 @@ public class RegisterManager : MonoBehaviour
 
         if (username == "")
         {
+            messageText.text = "Please enter username.";
+            return;
+        }
+
+        if (username.Length < 3)
+        {
             messageText.text =
-                "Please enter username.";
+                "Username must be at least 3 characters.";
 
             return;
         }
 
-        if (password == "")
+        if (username.Contains(" "))
         {
             messageText.text =
-                "Please enter password.";
+                "Username cannot contain spaces.";
 
+            return;
+        }
+
+
+        if (password == "")
+        {
+            messageText.text = "Please enter password.";
+            return;
+        }
+
+        if (password.Length < 6)
+        {
+            messageText.text = "Password must be at least 6 characters.";
             return;
         }
 

@@ -75,10 +75,13 @@ public class FullPosterImageAPI : MonoBehaviour
     public GameObject revisionPanel;
     public GameObject finalExplanationPanel;
     public GameObject scorePanel;
-    public GameObject posterReviewPanel;
+    
 
     [Header("Review Page")]
-    [SerializeField] private RawImage reviewPosterRawImage;
+    [SerializeField] public GameObject scorePosterReviewPanel;
+    [SerializeField] private RawImage scoreReviewRawImage;
+    [SerializeField] public GameObject revisionPosterReviewPanel;
+    [SerializeField] private RawImage revisionReviewRawImage;
     [SerializeField] private GameObject originalPreviewPanel;
     [SerializeField] private RawImage originalPreviewRawImage;
 
@@ -322,7 +325,7 @@ public class FullPosterImageAPI : MonoBehaviour
 
         revisionPosterRawImage.texture = tex;
 
-        reviewPosterRawImage.texture = tex;
+        scoreReviewRawImage.texture = tex;
     }
 
     private IEnumerator DescribeGeneratedImage()
@@ -877,60 +880,67 @@ public class FullPosterImageAPI : MonoBehaviour
 
     public void OpenRevisePosterReview()
     {
-       
-        posterReviewPanel.SetActive(true);
+        revisionPanel.SetActive(false);
+
+        revisionPosterReviewPanel.SetActive(true);
 
         if (revisedPosterTexture != null)
         {
-            reviewPosterRawImage.texture = revisedPosterTexture;
-
-            AndroidTTS.Speak(
-                "Opening revised poster."
-            );
+            revisionReviewRawImage.texture =
+                revisedPosterTexture;
         }
         else
         {
-            reviewPosterRawImage.texture = originalPosterTexture;
-
-            AndroidTTS.Speak(
-                "No revisions were made. Opening original poster."
-            );
-        } 
-    }
-
- 
-
-    public void OpenFinalPosterReview()
-    {
-        
-        posterReviewPanel.SetActive(true);
-
-        if (revisedPosterTexture != null)
-        {
-            reviewPosterRawImage.texture = revisedPosterTexture;
-
-            AndroidTTS.Speak(
-                "Opening final revised poster."
-            );
+            revisionReviewRawImage.texture =
+                originalPosterTexture;
         }
-        else
-        {
-            reviewPosterRawImage.texture = originalPosterTexture;
-
-            AndroidTTS.Speak(
-                "No revisions were made. Opening original poster."
-            );
-        }
-    }
-
-    public void CloseFinalRevisePoster()
-    {
-        posterReviewPanel.SetActive(false);
-        
-
 
         AndroidTTS.Speak(
-            "Closing Final Revise Poster."
+            "Opening revised poster."
+        );
+    }
+
+    public void OpenFinalPosterReviewInScore()
+    {
+        scorePanel.SetActive(false);
+
+        scorePosterReviewPanel.SetActive(true);
+
+        if (revisedPosterTexture != null)
+        {
+            scoreReviewRawImage.texture =
+                revisedPosterTexture;
+        }
+        else
+        {
+            scoreReviewRawImage.texture =
+                originalPosterTexture;
+        }
+
+        AndroidTTS.Speak(
+            "Opening final revised poster."
+        );
+    }
+
+    public void CloseScorePosterReview()
+    {
+        scorePosterReviewPanel.SetActive(false);
+
+        scorePanel.SetActive(true);
+
+        AndroidTTS.Speak(
+            "Returning to score page."
+        );
+    }
+
+    public void CloseRevisionPosterReview()
+    {
+        revisionPosterReviewPanel.SetActive(false);
+
+        revisionPanel.SetActive(true);
+
+        AndroidTTS.Speak(
+            "Returning to revision page."
         );
     }
 
@@ -1069,7 +1079,7 @@ public class FullPosterImageAPI : MonoBehaviour
         posterRawImage.texture = null;
         descriptionRawImage.texture = null;
         revisionPosterRawImage.texture = null;
-        reviewPosterRawImage.texture = null;
+        scoreReviewRawImage.texture = null;
         originalPosterTexture = null;
         revisedPosterTexture = null; 
 
@@ -1092,7 +1102,7 @@ public class FullPosterImageAPI : MonoBehaviour
         revisionPanel.SetActive(false);
         finalExplanationPanel.SetActive(false);
         scorePanel.SetActive(false);
-        posterReviewPanel.SetActive(false);
+        scorePosterReviewPanel.SetActive(false);
         originalPreviewPanel.SetActive(false);
     }
 
