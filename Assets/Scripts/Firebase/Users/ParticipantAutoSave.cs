@@ -5,7 +5,8 @@ public class ParticipantAutoSave : MonoBehaviour
 {
     public TMP_InputField participantNameInput;
     public TMP_InputField institutionInput;
-    public TMP_Dropdown categoryDropdown;
+    public TMP_Dropdown categoryTypeDropdown;
+    public TMP_Dropdown subCategoryDropdown;
 
     public TMP_InputField promptInput;
     public TMP_InputField revisionPromptInput;
@@ -20,7 +21,8 @@ public class ParticipantAutoSave : MonoBehaviour
 
         data.participantName = participantNameInput.text;
         data.institution = institutionInput.text;
-        data.category = categoryDropdown.options[categoryDropdown.value].text;
+        data.categoryType = categoryTypeDropdown.options[categoryTypeDropdown.value].text;
+        data.subCategory = subCategoryDropdown.options[subCategoryDropdown.value].text;
 
         ParticipantManager.Instance.Save();
     }

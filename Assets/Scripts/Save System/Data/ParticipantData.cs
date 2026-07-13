@@ -13,7 +13,8 @@ public class ParticipantData
     // Participant Info
     public string participantName;
     public string institution;
-    public string category;
+    public string categoryType;
+    public string subCategory;
 
     // Current Page
     public string lastPage;

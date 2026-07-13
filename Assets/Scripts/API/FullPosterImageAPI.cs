@@ -18,7 +18,8 @@ public class FullPosterImageAPI : MonoBehaviour
     [Header("Participant Details")]
     [SerializeField] TMP_InputField participantNameInput;
     [SerializeField] TMP_InputField institutionInput;
-    [SerializeField] TMP_Dropdown categoryDropdown;
+    [SerializeField] TMP_Dropdown categoryTypeDropdown;
+    [SerializeField] TMP_Dropdown subCategoryDropdown;
 
 
     [Header("UI")]
@@ -106,7 +107,8 @@ public class FullPosterImageAPI : MonoBehaviour
 
         data.participantName = participantNameInput.text;
         data.institution = institutionInput.text;
-        data.category = categoryDropdown.options[categoryDropdown.value].text;
+        data.categoryType = categoryTypeDropdown.options[categoryTypeDropdown.value].text;
+        data.subCategory = subCategoryDropdown.options[subCategoryDropdown.value].text;
 
         ParticipantManager.Instance.Save();
     }
@@ -961,12 +963,23 @@ public class FullPosterImageAPI : MonoBehaviour
         participantNameInput.text = data.participantName;
         institutionInput.text = data.institution;
 
-        // Restore Category
-        for (int i = 0; i < categoryDropdown.options.Count; i++)
+
+        // Restore Category Type
+        for (int i = 0; i < categoryTypeDropdown.options.Count; i++)
         {
-            if (categoryDropdown.options[i].text == data.category)
+            if (categoryTypeDropdown.options[i].text == data.categoryType)
             {
-                categoryDropdown.value = i;
+                categoryTypeDropdown.value = i;
+                break;
+            }
+        }
+
+        // Restore Sub Category
+        for (int i = 0; i < subCategoryDropdown.options.Count; i++)
+        {
+            if (subCategoryDropdown.options[i].text == data.subCategory)
+            {
+                subCategoryDropdown.value = i;
                 break;
             }
         }
@@ -1048,7 +1061,8 @@ public class FullPosterImageAPI : MonoBehaviour
 
         participantNameInput.text = "";
         institutionInput.text = "";
-        categoryDropdown.value = 0;
+        categoryTypeDropdown.value = 0;
+        subCategoryDropdown.value = 0;
 
 
         currentRevisionCount = 0;

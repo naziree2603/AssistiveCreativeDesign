@@ -29,7 +29,8 @@ public class FirestoreManager : MonoBehaviour
         data["participantID"] = p.participantID;
         data["participantName"] = p.participantName;
         data["institution"] = p.institution;
-        data["category"] = p.category;
+        data["categoryType"] = p.categoryType;
+        data["subCategory"] = p.subCategory;
 
         data["prompt"] = p.prompt;
 
@@ -76,10 +77,7 @@ public class FirestoreManager : MonoBehaviour
 
     public async Task<ParticipantData> LoadParticipant(string documentID)
     {
-        DocumentSnapshot snapshot =
-            await db.Collection("users")
-            .Document(documentID)
-            .GetSnapshotAsync();
+        DocumentSnapshot snapshot = await db.Collection("users").Document(documentID).GetSnapshotAsync();
 
         if (!snapshot.Exists)
         {
@@ -88,15 +86,14 @@ public class FirestoreManager : MonoBehaviour
             return null;
         }
 
-        Dictionary<string, object> data =
-            snapshot.ToDictionary();
+        Dictionary<string, object> data = snapshot.ToDictionary();
 
-        ParticipantData p =
-            new ParticipantData();
+        ParticipantData p = new ParticipantData();
 
         p.participantName = GetString(data, "participantName");
         p.institution = GetString(data, "institution");
-        p.category = GetString(data, "category");
+        p.categoryType = GetString(data, "categoryType");
+        p.subCategory = GetString(data, "subCategory");
         p.prompt = GetString(data, "prompt");
 
         p.originalImageUrl = GetString(data, "originalImageUrl");
@@ -178,8 +175,8 @@ public class FirestoreManager : MonoBehaviour
             if (data.ContainsKey("institution"))
                 p.institution = data["institution"].ToString();
 
-            if (data.ContainsKey("category"))
-                p.category = data["category"].ToString();
+            if (data.ContainsKey("categoryType"))
+                p.categoryType = data["categoryType"].ToString();
 
             if (data.ContainsKey("score"))
                 p.score =

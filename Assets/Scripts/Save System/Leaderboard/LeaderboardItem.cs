@@ -16,7 +16,7 @@ public class LeaderboardItem : MonoBehaviour
 
         nameText.text = data.participantName;
 
-        categoryText.text = data.category;
+        categoryText.text = data.categoryType;
 
         institutionText.text = data.institution;
 

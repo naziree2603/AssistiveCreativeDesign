@@ -56,7 +56,7 @@ public class FirestoreAccountManager : MonoBehaviour
         data["participantID"] = Guid.NewGuid().ToString();
         data["participantName"] = "";
         data["institution"] = "";
-        data["category"] = "";
+        data["categoryType"] = "";
         data["prompt"] = "";
 
         data["promptUsed"] = "";
