@@ -26,6 +26,8 @@ public class FirestoreManager : MonoBehaviour
     {
         Dictionary<string, object> data = new Dictionary<string, object>();
 
+        data["challengeID"] = p.challengeID;
+        data["challengeTitle"] = p.challengeTitle;
         data["participantID"] = p.participantID;
         data["participantName"] = p.participantName;
         data["institution"] = p.institution;
@@ -90,6 +92,8 @@ public class FirestoreManager : MonoBehaviour
 
         ParticipantData p = new ParticipantData();
 
+        p.challengeID = GetString(data, "challengeID");
+        p.challengeTitle = GetString(data, "challengeTitle");
         p.participantName = GetString(data, "participantName");
         p.institution = GetString(data, "institution");
         p.categoryType = GetString(data, "categoryType");
@@ -112,6 +116,15 @@ public class FirestoreManager : MonoBehaviour
         if (data.ContainsKey("participantID"))
             p.participantID =
                 data["participantID"].ToString();
+
+        if (data.ContainsKey("entryID"))
+            p.entryID =
+                data["entryID"].ToString();
+
+        if (string.IsNullOrEmpty(p.entryID))
+        {
+            p.entryID = Guid.NewGuid().ToString();
+        }
 
         if (data.ContainsKey("revisionCount"))
             p.revisionCount =

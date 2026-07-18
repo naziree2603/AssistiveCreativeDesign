@@ -1,131 +1,127 @@
-using Firebase.Firestore;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System;
-using UnityEngine;
-using System.Linq;
+    using Firebase.Firestore;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    using System;
+    using UnityEngine;
+    using System.Linq;
 
-public class FirestoreAccountManager : MonoBehaviour
-{
-    public static FirestoreAccountManager Instance;
-
-    public AccountData CurrentAccount;
-
-    FirebaseFirestore db;
-
-    private void Awake()
+    public class FirestoreAccountManager : MonoBehaviour
     {
-        if (Instance == null)
+        public static FirestoreAccountManager Instance;
+
+        public AccountData CurrentAccount;
+
+        FirebaseFirestore db;
+
+        private void Awake()
         {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-    }
-
-    private void Start()
-    {
-        db = FirebaseFirestore.DefaultInstance;
-    }
-
-    public async Task<bool> Register(string username, string password)
-    {
-        // Check if username already exists
-        QuerySnapshot snapshot =
-            await db.Collection("users")
-            .WhereEqualTo("username", username)
-            .GetSnapshotAsync();
-
-        if (snapshot.Count > 0)
-        {
-            Debug.Log("Username already exists.");
-
-            return false;
+            if (Instance == null)
+            {
+                Instance = this;
+                DontDestroyOnLoad(gameObject);
+            }
+            else
+            {
+                Destroy(gameObject);
+            }
         }
 
-        Dictionary<string, object> data = new Dictionary<string, object>();
+        private void Start()
+        {
+            db = FirebaseFirestore.DefaultInstance;
+        }
 
-        // Account
+        public async Task<bool> Register(string username, string password)
+        {
+            // Check if username already exists
+            QuerySnapshot snapshot =
+                await db.Collection("users")
+                .WhereEqualTo("username", username)
+                .GetSnapshotAsync();
+
+            if (snapshot.Count > 0)
+            {
+                Debug.Log("Username already exists.");
+
+                return false;
+            }
+
+            Dictionary<string, object> data = new Dictionary<string, object>();
+
+        //--------------------------------
+        // Login
+        //--------------------------------
+
         data["username"] = username;
         data["password"] = password;
 
-        // Participant
-        data["participantID"] = Guid.NewGuid().ToString();
-        data["participantName"] = "";
-        data["institution"] = "";
-        data["categoryType"] = "";
-        data["prompt"] = "";
 
-        data["promptUsed"] = "";
-        data["storagePath"] = "";
-
-        data["originalImageUrl"] = "";
-        data["revisedImageUrl"] = "";
-
-        data["posterDescription"] = "";
-        data["revisionPrompt"] = "";
-        data["finalExplanation"] = "";
-
-        data["score"] = 0f;
-
-        data["promptQuality"] = 0;
-        data["posterMessage"] = 0;
-        data["designQuality"] = 0;
-        data["accessibilityUnderstanding"] = 0;
-        data["revisionProcessScore"] = 0;
-        data["finalExplanationScore"] = 0;
-
-        data["feedback"] = "";
-        data["improvementSuggestion"] = "";
-
-        data["lastPage"] = "";
-
-        data["revisionCount"] = 0;
+        //--------------------------------
+        // Date
+        //--------------------------------
 
         data["createdDate"] =
-            System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
         await db.Collection("users").AddAsync(data);
 
-        Debug.Log("Register Success");
+            Debug.Log("Register Success");
 
-        return true;
-    }
-
-    public async Task<bool> Login(string username, string password)
-    {
-        QuerySnapshot snapshot =
-            await db.Collection("users")
-            .WhereEqualTo("username", username)
-            .GetSnapshotAsync();
-
-        if (snapshot.Count == 0)
-        {
-            Debug.Log("Username not found.");
-            return false;
+            return true;
         }
 
-        DocumentSnapshot document = snapshot.Documents.First();
-
-        Dictionary<string, object> data = document.ToDictionary();
-
-        if (data["password"].ToString() != password)
+        public async Task<bool> Login(string username, string password)
         {
-            Debug.Log("Wrong password.");
-            return false;
-        }
+            QuerySnapshot snapshot =
+                await db.Collection("users")
+                .WhereEqualTo("username", username)
+                .GetSnapshotAsync();
+
+            if (snapshot.Count == 0)
+            {
+                Debug.Log("Username not found.");
+                return false;
+            }
+
+            DocumentSnapshot document = snapshot.Documents.First();
+
+            Dictionary<string, object> data = document.ToDictionary();
+
+            if (data["password"].ToString() != password)
+            {
+                Debug.Log("Wrong password.");
+                return false;
+            }
 
         CurrentAccount = new AccountData();
 
         CurrentAccount.documentID = document.Id;
-        CurrentAccount.username = username;
-        CurrentAccount.password = password;
+
+        CurrentAccount.username = GetString(data, "username");
+
+        CurrentAccount.password = GetString(data, "password");
+
+        MainMenuManager menu = FindFirstObjectByType<MainMenuManager>();
+
+        if (menu != null)
+        {
+            await menu.RefreshButtons();
+        }
 
         Debug.Log("Login Success");
 
-        return true;
+            return true;
+        }
+
+        private string GetString(Dictionary<string, object> data, string key)
+        {
+            if (!data.ContainsKey(key))
+                return "";
+
+            if (data[key] == null)
+                return "";
+
+            return data[key].ToString();
+        }
+
     }
-}

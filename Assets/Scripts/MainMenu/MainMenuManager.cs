@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Audio;
@@ -9,6 +10,10 @@ using static UnityEngine.UIElements.UxmlAttributeDescription;
 
 public class MainMenuManager : MonoBehaviour
 {
+    public SubmittedManager submittedManager;
+
+    public LeaderboardManager leaderboardManager;
+
 
     [Header("Panel Page")]
     public GameObject mainMenuPanel;
@@ -21,6 +26,12 @@ public class MainMenuManager : MonoBehaviour
     public GameObject scorePanel;
     public GameObject leaderboardPanel;
     public GameObject posterReviewPanel;
+    public GameObject submittedPanel;
+    public GameObject challengePanel;
+
+    [Header("Main Menu Objects")]
+    public GameObject historyButton;
+    public GameObject leaderboardButton;
 
 
     void Start()
@@ -53,6 +64,9 @@ public class MainMenuManager : MonoBehaviour
         finalExplanationPanel.SetActive(false);
         scorePanel.SetActive(false);
         leaderboardPanel.SetActive(false);
+        submittedPanel.SetActive(false);
+        challengePanel.SetActive(false);
+
     }
 
     
@@ -144,11 +158,11 @@ public class MainMenuManager : MonoBehaviour
             );
     }
 
-    public void StartApplication()
+    public void OpenProfile()
     {
     
         AndroidTTS.Speak(
-            "Participant details page. Fill in your name, institution, and category."
+            "Participant details page."
         );
 
         mainMenuPanel.SetActive(false);
@@ -160,6 +174,7 @@ public class MainMenuManager : MonoBehaviour
         finalExplanationPanel.SetActive(false);
         scorePanel.SetActive(false);
         leaderboardPanel.SetActive(false);
+        challengePanel.SetActive(false);
     }
 
     public void BackToMainMenu()
@@ -171,14 +186,23 @@ public class MainMenuManager : MonoBehaviour
             "Double tap to activate a button."
         );
     }
-      
+
+    public void OpenChallengePanel()
+    {
+        mainMenuPanel.SetActive(false);
+        challengePanel.SetActive(true);
+
+        ChallengeManager.Instance.LoadChallenges();
+
+        AndroidTTS.Speak("Challenge Page");
+    }
+
 
     public void GoToPosterPrompt()
     {
 
-        AndroidTTS.Speak(
-            "Poster Promt Page"
-        );
+
+        AndroidTTS.Speak("Poster Prompt Page");
 
         mainMenuPanel.SetActive(false);
         participantPanel.SetActive(false);
@@ -189,6 +213,50 @@ public class MainMenuManager : MonoBehaviour
         finalExplanationPanel.SetActive(false);
         scorePanel.SetActive(false);
         leaderboardPanel.SetActive(false);
+        challengePanel.SetActive(false);
+    }
+
+    public void OpenPrompt()
+    {
+        AndroidTTS.Speak("Poster Prompt Page");
+        mainMenuPanel.SetActive(false);
+        participantPanel.SetActive(false);
+        promptPanel.SetActive(true);
+        outputPanel.SetActive(false);
+        descriptionPanel.SetActive(false);
+        revisionPanel.SetActive(false);
+        finalExplanationPanel.SetActive(false);
+        scorePanel.SetActive(false);
+        leaderboardPanel.SetActive(false);
+        challengePanel.SetActive(false);
+    }
+    public void OpenSubmitted()
+    {
+        if (!historyButton.activeSelf)
+        {
+            AndroidTTS.Speak(
+                "History is unavailable. Complete at least one challenge first."
+            );
+            return;
+        }
+
+        AndroidTTS.Speak("Poster Submitted Page. ");
+
+
+        mainMenuPanel.SetActive(false);
+        participantPanel.SetActive(false);
+        promptPanel.SetActive(false);
+        outputPanel.SetActive(false);
+        descriptionPanel.SetActive(false);
+        revisionPanel.SetActive(false);
+        finalExplanationPanel.SetActive(false);
+        scorePanel.SetActive(false);
+        leaderboardPanel.SetActive(false);
+        submittedPanel.SetActive(true);
+
+        SubmittedManager manager = submittedPanel.GetComponent<SubmittedManager>(); 
+
+        manager.LoadSubmitted();
     }
 
     public void GoToGeneratedPoster()
@@ -284,10 +352,19 @@ public class MainMenuManager : MonoBehaviour
 
     public void GoToLeaderboardPage()
     {
+        if (!leaderboardButton.activeSelf)
+        {
+            AndroidTTS.Speak(
+                "Leaderboard is unavailable. Complete at least one challenge first."
+            );
+            return;
+        }
 
         AndroidTTS.Speak(
             "Leaderboard Page."
         );
+
+        leaderboardManager.LoadLeaderboard();
 
         mainMenuPanel.SetActive(false);
         participantPanel.SetActive(false);
@@ -312,4 +389,25 @@ public class MainMenuManager : MonoBehaviour
     {
         AndroidTTS.Shutdown();
     }
+
+    public void OpenProfilePanel()
+    {
+        challengePanel.SetActive(false);
+
+        participantPanel.SetActive(true);
+    }
+
+    public async Task RefreshButtons()
+    {
+        string accountID =
+            FirestoreAccountManager.Instance.CurrentAccount.documentID;
+
+        bool hasSubmission =
+            await FirestoreEntryManager.Instance
+                .HasCompletedSubmission(accountID);
+
+        historyButton.SetActive(hasSubmission);
+        leaderboardButton.SetActive(hasSubmission);
+    }
 }
+

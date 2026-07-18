@@ -1,9 +1,10 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 
 public class LeaderboardItem : MonoBehaviour
 {
     [Header("UI")]
+
     public TMP_Text rankText;
     public TMP_Text nameText;
     public TMP_Text categoryText;

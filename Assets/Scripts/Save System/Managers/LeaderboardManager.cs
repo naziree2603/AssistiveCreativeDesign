@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 public class LeaderboardManager : MonoBehaviour
@@ -9,6 +10,9 @@ public class LeaderboardManager : MonoBehaviour
     [Header("Content")]
     public Transform content;
 
+    [Header("Challenge Title")]
+    public TMP_Text challengeTitleText;
+
     void OnEnable()
     {
         LoadLeaderboard();
@@ -16,10 +20,33 @@ public class LeaderboardManager : MonoBehaviour
 
     public async void LoadLeaderboard()
     {
-        if (FirestoreManager.Instance == null)
+        Debug.Log("===== LEADERBOARD =====");
+
+        Debug.Log("CurrentChallenge = " +
+            (ChallengeManager.Instance.CurrentChallenge == null
+                ? "NULL"
+                : ChallengeManager.Instance.CurrentChallenge.title));
+
+        Debug.Log("ChallengeList Count = " +
+            ChallengeManager.Instance.ChallengeList.Count);
+
+        Debug.Log("Current Participant ChallengeID = " +
+            ParticipantManager.Instance.CurrentParticipant.challengeID);
+
+        if (FirestoreEntryManager.Instance == null)
         {
-            Debug.LogError("FirestoreManager not found.");
+            Debug.LogError("FirestoreEntryManager not found.");
             return;
+        }
+
+        if (ChallengeManager.Instance.CurrentChallenge != null)
+        {
+            challengeTitleText.text =
+                ChallengeManager.Instance.CurrentChallenge.title;
+        }
+        else
+        {
+            challengeTitleText.text = "Leaderboard";
         }
 
         foreach (Transform child in content)
@@ -27,8 +54,13 @@ public class LeaderboardManager : MonoBehaviour
             Destroy(child.gameObject);
         }
 
-        List<ParticipantData> participants =
-            await FirestoreManager.Instance.LoadLeaderboard();
+        if (ChallengeManager.Instance.CurrentChallenge == null)
+        {
+            Debug.Log("No Challenge Selected");
+            return;
+        }
+
+        List<ParticipantData> participants = await FirestoreEntryManager.Instance.LoadLeaderboard(ChallengeManager.Instance.CurrentChallenge.challengeID);
 
         for (int i = 0; i < participants.Count; i++)
         {
@@ -37,5 +69,7 @@ public class LeaderboardManager : MonoBehaviour
 
             item.Setup(participants[i], i + 1);
         }
+
+
     }
 }

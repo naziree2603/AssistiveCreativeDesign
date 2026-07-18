@@ -36,7 +36,7 @@ public class LoginManager : MonoBehaviour
 
         bool success = await FirestoreAccountManager.Instance.Login(username, password);
 
-        Debug.Log("Login Result: " + success);
+        Debug.Log("Login Result : " + success);
 
         if (!success)
         {
@@ -44,19 +44,17 @@ public class LoginManager : MonoBehaviour
             return;
         }
 
-        Debug.Log("Loading Participant...");
+        // Reset previous session
+        ProfileManager.Instance.ResetProfile();
 
-        await ParticipantManager.Instance.Load();
-
-        Debug.Log("Participant Loaded.");
+        ParticipantManager.Instance.ResetParticipant();
 
         posterSystem.ResetSystem();
 
-        posterSystem.LoadParticipant();
-
-        Debug.Log("Opening Main Menu.");
+        Debug.Log("Login Success");
 
         loginPanel.SetActive(false);
+
         mainMenuPanel.SetActive(true);
     }
 
@@ -70,14 +68,18 @@ public class LoginManager : MonoBehaviour
     {
         FirestoreAccountManager.Instance.CurrentAccount = null;
 
+        ProfileManager.Instance.ResetProfile();
+
         ParticipantManager.Instance.ResetParticipant();
 
         posterSystem.ResetSystem();
 
-        mainMenuPanel.SetActive(false);
         loginPanel.SetActive(true);
 
+        mainMenuPanel.SetActive(false);
+
         usernameInput.text = "";
+
         passwordInput.text = "";
 
         messageText.text = "";

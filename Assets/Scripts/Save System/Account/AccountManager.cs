@@ -1,21 +1,21 @@
-using UnityEngine;
+    using UnityEngine;
 
-public class AccountManager : MonoBehaviour
-{
-    public static AccountManager Instance;
-
-    public AccountData CurrentAccount;
-
-    void Awake()
+    public class AccountManager : MonoBehaviour
     {
-        if (Instance == null)
+        public static AccountManager Instance;
+
+        public AccountData CurrentAccount;
+
+        void Awake()
         {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
+            if (Instance == null)
+            {
+                Instance = this;
+                DontDestroyOnLoad(gameObject);
+            }
+            else
+            {
+                Destroy(gameObject);
+            }
         }
     }
-}

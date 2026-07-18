@@ -8,9 +8,13 @@ public class ParticipantData
     // Unique ID
     public string participantID;
 
+    public string entryID;
+
 
 
     // Participant Info
+    public string challengeID;
+    public string challengeTitle;
     public string participantName;
     public string institution;
     public string categoryType;
@@ -53,4 +57,8 @@ public class ParticipantData
 
     // Date
     public string createdDate;
+
+    public bool isCompleted;
+
+    public string completedDate;
 }

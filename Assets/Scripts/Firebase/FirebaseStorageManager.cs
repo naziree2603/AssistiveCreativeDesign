@@ -36,16 +36,25 @@ public class FirebaseStorageManager : MonoBehaviour
         {
             byte[] bytes = texture.EncodeToPNG();
 
-            string documentID = FirestoreAccountManager.Instance.CurrentAccount.documentID;
+            if (ParticipantManager.Instance.CurrentParticipant == null)
+            {
+                Debug.LogError("CurrentParticipant is null.");
+                return "";
+            }
+
+            string entryID = ParticipantManager.Instance.CurrentParticipant.entryID;
+
+            if (string.IsNullOrEmpty(entryID))
+            {
+                Debug.LogError("EntryID is empty.");
+                return "";
+            }
 
             string fileName;
 
             if (isRevision)
             {
-                fileName =
-                    "revision_" +
-                    System.DateTime.Now.Ticks +
-                    ".png";
+                fileName = "revision_" + System.DateTime.Now.Ticks + ".png";
             }
             else
             {
@@ -54,9 +63,9 @@ public class FirebaseStorageManager : MonoBehaviour
 
             StorageReference imageRef =
                 storageReference
-                .Child("users")
-                .Child(documentID)
-                .Child(fileName);
+                    .Child("entries")
+                    .Child(entryID)
+                    .Child(fileName);
 
             await imageRef.PutBytesAsync(bytes);
 

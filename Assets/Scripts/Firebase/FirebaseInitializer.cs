@@ -3,13 +3,18 @@ using UnityEngine;
 
 public class FirebaseInitializer : MonoBehaviour
 {
+    public static bool IsReady = false;
+
     async void Start()
     {
-        var status = await FirebaseApp.CheckAndFixDependenciesAsync();
+        var status =
+            await FirebaseApp.CheckAndFixDependenciesAsync();
 
         if (status == DependencyStatus.Available)
         {
-            Debug.Log("✅ Firebase Ready");
+            IsReady = true;
+
+            Debug.Log("Firebase Ready");
         }
         else
         {

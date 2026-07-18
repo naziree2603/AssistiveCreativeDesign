@@ -3,6 +3,7 @@ using System.Collections;
 using System.IO;
 using System.Security.Policy;
 using System.Text;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -76,7 +77,8 @@ public class FullPosterImageAPI : MonoBehaviour
     public GameObject revisionPanel;
     public GameObject finalExplanationPanel;
     public GameObject scorePanel;
-    
+    public GameObject leaderboardPanel;
+
 
     [Header("Review Page")]
     [SerializeField] public GameObject scorePosterReviewPanel;
@@ -96,21 +98,38 @@ public class FullPosterImageAPI : MonoBehaviour
 
     //Generate Poster Image
 
-    public void StartParticipant()
+    public async void StartParticipant()
     {
-        if (ParticipantManager.Instance.CurrentParticipant == null)
-        {
-            ParticipantManager.Instance.CreateNewParticipant();
-        }
+
 
         ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
+
+        AccountData account = FirestoreAccountManager.Instance.CurrentAccount;
+
+
+
 
         data.participantName = participantNameInput.text;
         data.institution = institutionInput.text;
         data.categoryType = categoryTypeDropdown.options[categoryTypeDropdown.value].text;
         data.subCategory = subCategoryDropdown.options[subCategoryDropdown.value].text;
 
-        ParticipantManager.Instance.Save();
+        ParticipantData participant = ParticipantManager.Instance.CurrentParticipant;
+
+        participant.challengeID = ChallengeManager.Instance.CurrentChallenge.challengeID;
+        participant.challengeTitle = ChallengeManager.Instance.CurrentChallenge.title;
+
+        if (ChallengeManager.Instance.CurrentChallenge == null)
+        {
+            statusText.text =
+                "Please select a challenge.";
+
+            return;
+        }
+
+        await ParticipantManager.Instance.Save();
+
+
     }
 
     public void GenerateFullPosterImage()
@@ -180,11 +199,6 @@ public class FullPosterImageAPI : MonoBehaviour
         latestImageUrl = response.imageUrl;
         latestPromptUsed = response.promptUsed;
         latestStoragePath = response.storagePath;
-
-        if (ParticipantManager.Instance.CurrentParticipant == null)
-        {
-            ParticipantManager.Instance.CreateNewParticipant();
-        }
 
         ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
 
@@ -672,7 +686,7 @@ public class FullPosterImageAPI : MonoBehaviour
         ShowLoading(
             "Evaluating your submission. Please wait."
         );
-
+        
         yield return request.SendWebRequest();
 
         if (request.result != UnityWebRequest.Result.Success)
@@ -697,6 +711,8 @@ public class FullPosterImageAPI : MonoBehaviour
         AndroidTTS.Speak(
             "Evaluation completed successfully. Opening score page."
         );
+
+
 
         yield return new WaitForSeconds(3f);
 
@@ -745,7 +761,12 @@ public class FullPosterImageAPI : MonoBehaviour
         suggestionText.text =
             response.score.improvementSuggestion;
 
-        
+        ParticipantManager.Instance.CurrentParticipant.isCompleted = true;
+
+        ParticipantManager.Instance.CurrentParticipant.completedDate =
+            DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+
 
         ParticipantManager.Instance.CurrentParticipant.finalExplanation = finalExplanationInput.text;
 
@@ -818,20 +839,43 @@ public class FullPosterImageAPI : MonoBehaviour
 
     private IEnumerator SaveScoreAndRefreshLeaderboard()
     {
+        Debug.Log("===== BEFORE SAVE =====");
+
+        Debug.Log("EntryID = " +
+            ParticipantManager.Instance.CurrentParticipant.entryID);
+
+        Debug.Log("Completed = " +
+            ParticipantManager.Instance.CurrentParticipant.isCompleted);
+
+        Debug.Log("CompletedDate = " +
+            ParticipantManager.Instance.CurrentParticipant.completedDate);
+
+        Debug.Log("Score = " +
+            ParticipantManager.Instance.CurrentParticipant.score);
+
         var saveTask =
             ParticipantManager.Instance.Save();
 
         yield return new WaitUntil(() => saveTask.IsCompleted);
 
-        LeaderboardManager leaderboard =
-            FindFirstObjectByType<LeaderboardManager>();
+        MainMenuManager menu = FindFirstObjectByType<MainMenuManager>();
+
+        if (menu != null)
+        {
+            var refreshTask = menu.RefreshButtons();
+
+            yield return new WaitUntil(() => refreshTask.IsCompleted);
+        }
+
+        LeaderboardManager leaderboard = FindFirstObjectByType<LeaderboardManager>();
+
 
         if (leaderboard != null)
         {
             leaderboard.LoadLeaderboard();
         }
 
-        Debug.Log("Leaderboard refreshed.");
+        Debug.Log("Submission completed.");
     }
 
     public void ReadScore()
@@ -844,7 +888,7 @@ public class FullPosterImageAPI : MonoBehaviour
         );
     }
 
-    private void ShowLoading(string message)
+    public void ShowLoading(string message)
     {
         loadingPanel.SetActive(true);
 
@@ -869,7 +913,7 @@ public class FullPosterImageAPI : MonoBehaviour
         }
     }
 
-    private void HideLoading()
+    public void HideLoading()
     {
         loadingPanel.SetActive(false);
 
@@ -1055,6 +1099,35 @@ public class FullPosterImageAPI : MonoBehaviour
         Debug.Log("Participant restored successfully.");
     }
 
+    public void PrepareForNewChallenge()
+    {
+        currentRevisionCount = 0;
+
+        latestImageUrl = "";
+        latestPromptUsed = "";
+        latestStoragePath = "";
+
+        lastDescription = "";
+        scoreSpeechText = "";
+
+        originalPosterTexture = null;
+        revisedPosterTexture = null;
+
+        promptInput.text = "";
+        revisionPromptInput.text = "";
+        finalExplanationInput.text = "";
+
+        detailsText.text = "";
+
+        posterRawImage.texture = null;
+        descriptionRawImage.texture = null;
+        revisionPosterRawImage.texture = null;
+        scoreReviewRawImage.texture = null;
+
+        Debug.Log("New Challenge Ready");
+    }
+
+
     public void ResetSystem()
     {
 
@@ -1204,7 +1277,4 @@ public class ScoreBreakdown
     public string feedback;
     public string improvementSuggestion;
 }
-
-
-
 
