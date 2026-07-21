@@ -1,3 +1,4 @@
+    using Firebase;
     using Firebase.Firestore;
     using System.Collections.Generic;
     using System.Threading.Tasks;
@@ -13,6 +14,8 @@
 
         FirebaseFirestore db;
 
+
+
         private void Awake()
         {
             if (Instance == null)
@@ -26,12 +29,24 @@
             }
         }
 
-        private void Start()
+    private async void Start()
+    {
+        var status = await FirebaseApp.CheckAndFixDependenciesAsync();
+
+        Debug.Log("Firebase Status: " + status);
+
+        if (status == DependencyStatus.Available)
         {
             db = FirebaseFirestore.DefaultInstance;
+            Debug.Log("Firestore Ready");
         }
+        else
+        {
+            Debug.LogError("Firebase failed: " + status);
+        }
+    }
 
-        public async Task<bool> Register(string username, string password)
+    public async Task<bool> Register(string username, string password)
         {
             // Check if username already exists
             QuerySnapshot snapshot =

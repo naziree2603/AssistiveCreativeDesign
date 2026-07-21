@@ -1171,13 +1171,6 @@ public class FullPosterImageAPI : MonoBehaviour
         revisedPosterTexture = null; 
 
 
-
-
-
-        AndroidTTS.Speak(
-            "System reset completed. Returning to home page."
-        );
-
     }
 
     public void CloseAllPanels()

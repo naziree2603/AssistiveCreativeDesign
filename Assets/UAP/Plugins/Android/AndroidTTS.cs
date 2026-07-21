@@ -87,11 +87,11 @@ public class AndroidTTS : MonoBehaviour
 			speechRate = 100;
 
 #if UNITY_ANDROID && !UNITY_EDITOR
-		float adjustedSpeechRate = (speechRate + 50) / 50.0f;
+		float adjustedSpeechRate = speechRate / 50.0f;
 		var plugin = new AndroidJavaClass("com.metalpopgames.androidtts.AndroidTTS");
 		plugin.CallStatic("SetSpeakingRate", adjustedSpeechRate);
 #endif
-	}
+    }
 
     public static void SpeakMalay(string text)
     {
