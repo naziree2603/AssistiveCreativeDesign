@@ -126,6 +126,13 @@ public class FirestoreEntryManager : MonoBehaviour
 
         await db.Collection("entries").Document(p.entryID).SetAsync(data, SetOptions.MergeAll);
 
+        Debug.Log("===== SAVE CHECK =====");
+        Debug.Log("EntryID: " + p.entryID);
+        Debug.Log("Participant Name: [" + p.participantName + "]");
+        Debug.Log("Institution: [" + p.institution + "]");
+        Debug.Log("Challenge: " + p.challengeTitle);
+        Debug.Log("Last Page: " + p.lastPage);
+
         Debug.Log("Entry Saved Successfully");
 
         Debug.Log("===== SAVE ENTRY =====");

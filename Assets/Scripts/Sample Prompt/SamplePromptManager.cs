@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using static AccessibilityToggle;
 
 public class SamplePromptManager : MonoBehaviour
 {
@@ -26,7 +27,7 @@ public class SamplePromptManager : MonoBehaviour
         promptPanel.SetActive(false);
         samplePromtPopup.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Sample prompts opened."
         );
     }
@@ -36,7 +37,7 @@ public class SamplePromptManager : MonoBehaviour
         samplePromtPopup.SetActive(false);
         promptPanel.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Sample prompts closed."
         );
     }
@@ -49,7 +50,7 @@ public class SamplePromptManager : MonoBehaviour
         samplePromtPopup.SetActive(false);
         promptPanel.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
         "Sample prompt inserted."
         );
     }
@@ -62,7 +63,7 @@ public class SamplePromptManager : MonoBehaviour
         samplePromtPopup.SetActive(false);
         promptPanel.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
         "Sample prompt inserted."
         );
     }
@@ -75,7 +76,7 @@ public class SamplePromptManager : MonoBehaviour
         samplePromtPopup.SetActive(false);
         promptPanel.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
         "Sample prompt inserted."
         );
     }
@@ -87,9 +88,9 @@ public class SamplePromptManager : MonoBehaviour
     {
         revisePanel.SetActive(false);
         sampleRevisePopup.SetActive(true);
-        
 
-        AndroidTTS.Speak(
+
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Sample revise prompts opened."
         );
     }
@@ -98,9 +99,9 @@ public class SamplePromptManager : MonoBehaviour
     {
         sampleRevisePopup.SetActive(false);
         revisePanel.SetActive(true);
-        
 
-        AndroidTTS.Speak(
+
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Sample revise prompts closed."
         );
     }
@@ -112,9 +113,9 @@ public class SamplePromptManager : MonoBehaviour
 
         sampleRevisePopup.SetActive(false);
         revisePanel.SetActive(true);
-        
 
-        AndroidTTS.Speak(
+
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Sample revision inserted."
         );
     }
@@ -127,7 +128,7 @@ public class SamplePromptManager : MonoBehaviour
         sampleRevisePopup.SetActive(false);
         revisePanel.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Sample revision inserted."
         );
     }
@@ -140,7 +141,7 @@ public class SamplePromptManager : MonoBehaviour
         sampleRevisePopup.SetActive(false);
         revisePanel.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Sample revision inserted."
         );
     }
@@ -152,7 +153,7 @@ public class SamplePromptManager : MonoBehaviour
         finalExplainationPanel.SetActive(false);
         sampleFinalExplainationPopup.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Sample final explaination prompts opened."
         );
     }
@@ -161,9 +162,9 @@ public class SamplePromptManager : MonoBehaviour
     {
         sampleFinalExplainationPopup.SetActive(false);
         finalExplainationPanel.SetActive(true);
-        
 
-        AndroidTTS.Speak(
+
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Sample final explaination prompts closed."
         );
     }
@@ -176,7 +177,7 @@ public class SamplePromptManager : MonoBehaviour
         sampleFinalExplainationPopup.SetActive(false);
         finalExplainationPanel.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Sample final explanation inserted."
         );
     }
@@ -189,7 +190,7 @@ public class SamplePromptManager : MonoBehaviour
         sampleFinalExplainationPopup.SetActive(false);
         finalExplainationPanel.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Sample final explanation inserted."
         );
     }
@@ -202,7 +203,7 @@ public class SamplePromptManager : MonoBehaviour
         sampleFinalExplainationPopup.SetActive(false);
         finalExplainationPanel.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Sample final explanation inserted."
         );
     }

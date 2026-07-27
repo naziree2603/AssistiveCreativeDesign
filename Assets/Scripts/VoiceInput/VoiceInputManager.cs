@@ -1,6 +1,7 @@
 using KKSpeech;
 using TMPro;
 using UnityEngine;
+using static AccessibilityToggle;
 
 public class VoiceInputManager : MonoBehaviour
 {
@@ -98,7 +99,7 @@ public class VoiceInputManager : MonoBehaviour
             recordingStatusText.text =
                 "No speech detected";
 
-            AndroidTTS.Speak(
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
                 "No speech detected. Please try again."
             );
 
@@ -120,7 +121,7 @@ public class VoiceInputManager : MonoBehaviour
     {
         yield return new WaitForSeconds(0.5f);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
         "Voice input completed. You entered. " + result);
     }
 

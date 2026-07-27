@@ -6,6 +6,7 @@ using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.SocialPlatforms.Impl;
+using static AccessibilityToggle;
 using static UnityEngine.UIElements.UxmlAttributeDescription;
 
 public class MainMenuManager : MonoBehaviour
@@ -13,6 +14,8 @@ public class MainMenuManager : MonoBehaviour
     public SubmittedManager submittedManager;
 
     public LeaderboardManager leaderboardManager;
+
+    public FullPosterImageAPI posterSystem;
 
 
     [Header("Panel Page")]
@@ -43,7 +46,7 @@ public class MainMenuManager : MonoBehaviour
 
     void WelcomeSpeech()
     {
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Welcome to Intelligent Inclusive Assistive Design."
         );
 
@@ -51,29 +54,26 @@ public class MainMenuManager : MonoBehaviour
 
     public void GoHome()
     {
-        AndroidTTS.Speak(
-            "Returning to Main Menu."
-        );
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Returning to Main Menu.");
+
+        posterSystem.HideLoading();
+
+        posterSystem.ResetSystem();
+        posterSystem.PrepareForNewChallenge();
+
+        ParticipantManager.Instance.ResetParticipant();
+        ChallengeManager.Instance.ResetChallenge();
+
+        posterSystem.CloseAllPanels();
 
         mainMenuPanel.SetActive(true);
-        participantPanel.SetActive(false);
-        promptPanel.SetActive(false);
-        outputPanel.SetActive(false);
-        descriptionPanel.SetActive(false);
-        revisionPanel.SetActive(false);
-        finalExplanationPanel.SetActive(false);
-        scorePanel.SetActive(false);
-        leaderboardPanel.SetActive(false);
-        submittedPanel.SetActive(false);
-        challengePanel.SetActive(false);
-
     }
 
-    
+
 
     public void OpenInstructions()
     {
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Opening instructions. Page 1 of 4. " +
 
             "Welcome to Intelligent Inclusive Assistive Design. " +
@@ -96,7 +96,7 @@ public class MainMenuManager : MonoBehaviour
 
     public void Page2()
     {
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Page 2 of 4. " +
 
             "Step 3. Review the Generated Poster. " +
@@ -115,7 +115,7 @@ public class MainMenuManager : MonoBehaviour
 
     public void Page3()
     {
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Page 3 of 4. " +
 
             "Step 6. AI Score Calculation. " +
@@ -136,7 +136,7 @@ public class MainMenuManager : MonoBehaviour
     }
     public void Page4()
     {
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Page 4 of 4. " +
 
             "Panel Flow. " +
@@ -160,8 +160,8 @@ public class MainMenuManager : MonoBehaviour
 
     public void OpenProfile()
     {
-    
-        AndroidTTS.Speak(
+
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Participant details page."
         );
 
@@ -180,11 +180,15 @@ public class MainMenuManager : MonoBehaviour
     public void BackToMainMenu()
     {
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Back to Main Menu Page. Welcome to Intelligent Inclusive Assistive Design. " +
             "Swipe left or right to navigate menu items. " +
             "Double tap to activate a button."
         );
+
+        posterSystem.CloseAllPanels();
+
+        mainMenuPanel.SetActive(true); 
     }
 
     public void OpenChallengePanel()
@@ -194,7 +198,7 @@ public class MainMenuManager : MonoBehaviour
 
         ChallengeManager.Instance.LoadChallenges();
 
-        AndroidTTS.Speak("Challenge Page");
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Challenge Page");
     }
 
 
@@ -202,7 +206,7 @@ public class MainMenuManager : MonoBehaviour
     {
 
 
-        AndroidTTS.Speak("Poster Prompt Page");
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Poster Prompt Page");
 
         mainMenuPanel.SetActive(false);
         participantPanel.SetActive(false);
@@ -218,7 +222,7 @@ public class MainMenuManager : MonoBehaviour
 
     public void OpenPrompt()
     {
-        AndroidTTS.Speak("Poster Prompt Page");
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Poster Prompt Page");
         mainMenuPanel.SetActive(false);
         participantPanel.SetActive(false);
         promptPanel.SetActive(true);
@@ -234,13 +238,13 @@ public class MainMenuManager : MonoBehaviour
     {
         if (!historyButton.activeSelf)
         {
-            AndroidTTS.Speak(
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
                 "History is unavailable. Complete at least one challenge first."
             );
             return;
         }
 
-        AndroidTTS.Speak("Poster Submitted Page. ");
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Poster Submitted Page. ");
 
 
         mainMenuPanel.SetActive(false);
@@ -262,7 +266,7 @@ public class MainMenuManager : MonoBehaviour
     public void GoToGeneratedPoster()
     {
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Generated Poster Image Page."
         );
 
@@ -280,7 +284,7 @@ public class MainMenuManager : MonoBehaviour
     public void GoToDescriptionPage()
     {
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Description Poster Page."
         );
 
@@ -298,7 +302,7 @@ public class MainMenuManager : MonoBehaviour
     public void GoToRevisePage()
     {
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Revise Poster Page."
         );
 
@@ -316,7 +320,7 @@ public class MainMenuManager : MonoBehaviour
     public void GoToFinalExplainPage()
     {
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Final Explainantion Page. " +
             "Explain your poster concept, message, and accessibility considerations. "
         );
@@ -335,7 +339,7 @@ public class MainMenuManager : MonoBehaviour
     public void GoToScorePage()
     {
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Score Full Poster Page."
         );
 
@@ -354,13 +358,13 @@ public class MainMenuManager : MonoBehaviour
     {
         if (!leaderboardButton.activeSelf)
         {
-            AndroidTTS.Speak(
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
                 "Leaderboard is unavailable. Complete at least one challenge first."
             );
             return;
         }
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Leaderboard Page."
         );
 
@@ -380,7 +384,7 @@ public class MainMenuManager : MonoBehaviour
 
     public void ExitApp()
     {
-        AndroidTTS.Speak("Closing application.");
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Closing application.");
 
         Application.Quit();
     }

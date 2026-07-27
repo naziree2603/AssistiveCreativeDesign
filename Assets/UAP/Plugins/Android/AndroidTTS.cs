@@ -54,19 +54,27 @@ public class AndroidTTS : MonoBehaviour
 #endif
 	}
 
-	//////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
 
-	static public void Speak(string text)
-	{
+    public static void Speak(string text)
+    {
+        if (!AccessibilityToggle.AccessibilityEnabled)
+        {
+            Debug.Log("TTS BLOCKED: " + text);
+            return;
+        }
+
+        Debug.Log("TTS SPEAK: " + text);
+
 #if UNITY_ANDROID && !UNITY_EDITOR
-		var plugin = new AndroidJavaClass("com.metalpopgames.androidtts.AndroidTTS");
-		plugin.CallStatic("Speak", text);
+    var plugin = new AndroidJavaClass("com.metalpopgames.androidtts.AndroidTTS");
+    plugin.CallStatic("Speak", text);
 #endif
-	}
+    }
 
-	//////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
 
-	static public void StopSpeaking()
+    static public void StopSpeaking()
 	{
 #if UNITY_ANDROID && !UNITY_EDITOR
 		var plugin = new AndroidJavaClass("com.metalpopgames.androidtts.AndroidTTS");

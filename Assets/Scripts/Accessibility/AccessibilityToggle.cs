@@ -6,17 +6,38 @@ public class AccessibilityToggle : MonoBehaviour
     public GameObject accessibilityManager;
     public TMP_Text buttonText;
 
-    private bool accessibilityEnabled = true;
+    public static bool AccessibilityEnabled = true;
 
     public void ToggleAccessibility()
     {
-        accessibilityEnabled = !accessibilityEnabled;
+        AccessibilityEnabled = !AccessibilityEnabled; 
 
-        accessibilityManager.SetActive(accessibilityEnabled);
+        Debug.Log("Toggle pressed");
+        Debug.Log("AccessibilityEnabled = " + AccessibilityEnabled);
 
-        buttonText.text =
-            accessibilityEnabled ?
-            "Accessibility ON" :
-            "Accessibility OFF";
+        UAP_AccessibilityManager.EnableAccessibility(AccessibilityEnabled);
+
+        buttonText.text = AccessibilityEnabled
+            ? "Accessibility ON"
+            : "Accessibility OFF";
+    }
+
+    public static class AccessibilitySpeech
+    {
+        public static void SpeakNavigation(string text)
+        {
+            if (!UAP_AccessibilityManager.IsEnabled())
+                return;
+
+            AndroidTTS.Speak(text);
+        }
+
+        public static void SpeakContent(string text)
+        {
+            if (!UAP_AccessibilityManager.IsEnabled())
+                return;
+
+            AndroidTTS.Speak(text);
+        }
     }
 }

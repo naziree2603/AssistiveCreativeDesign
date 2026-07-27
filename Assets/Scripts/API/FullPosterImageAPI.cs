@@ -8,6 +8,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
+using static AccessibilityToggle;
 
 public class FullPosterImageAPI : MonoBehaviour
 {
@@ -37,6 +38,8 @@ public class FullPosterImageAPI : MonoBehaviour
     [SerializeField] private RawImage descriptionRawImage;
 
     private string lastDescription = "";
+
+    private string revisionHistory = "";
 
     [Header("Revision UI")]
     [SerializeField] private TMP_InputField revisionPromptInput;
@@ -69,8 +72,17 @@ public class FullPosterImageAPI : MonoBehaviour
 
     private Coroutine loadingVoiceCoroutine;
 
+    private bool isProcessing = false;
+
+    private bool isDescriptionReady = false;
+
     [Header("Panel Page")]
+    public GameObject loginPanel;
+    public GameObject registerPanel; 
     public GameObject mainMenuPanel;
+    public GameObject instructionPanel;
+    public GameObject challengePanel;
+    public GameObject participantDetailsPanel;
     public GameObject promptPanel;
     public GameObject outputPanel;
     public GameObject descriptionPanel;
@@ -78,6 +90,7 @@ public class FullPosterImageAPI : MonoBehaviour
     public GameObject finalExplanationPanel;
     public GameObject scorePanel;
     public GameObject leaderboardPanel;
+    public GameObject submittedPanel;
 
 
     [Header("Review Page")]
@@ -87,6 +100,15 @@ public class FullPosterImageAPI : MonoBehaviour
     [SerializeField] private RawImage revisionReviewRawImage;
     [SerializeField] private GameObject originalPreviewPanel;
     [SerializeField] private RawImage originalPreviewRawImage;
+
+    [Header("Action Buttons")]
+    [SerializeField] private Button nextButtonInOutput;
+    [SerializeField] private GameObject generatePosterButton;
+    [SerializeField] private GameObject generateRevisionButton;
+    [SerializeField] private GameObject calculateScoreButton;
+    [SerializeField] private GameObject sample1;
+    [SerializeField] private GameObject sample2;
+    [SerializeField] private GameObject sample3;
 
     public enum PosterReviewSource
     {
@@ -134,14 +156,24 @@ public class FullPosterImageAPI : MonoBehaviour
 
     public void GenerateFullPosterImage()
     {
+        if (isProcessing)
+        {
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Please wait. Generation is still in progress.");
+            return;
+        }
+
         string prompt = promptInput.text.Trim();
+
         if (string.IsNullOrEmpty(prompt))
         {
             statusText.text = "Please enter a poster prompt.";
             return;
         }
 
+        isProcessing = true;
+
         isRevisionMode = false;
+
         StartCoroutine(PostGeneratePosterImage(prompt));
     }
 
@@ -170,10 +202,12 @@ public class FullPosterImageAPI : MonoBehaviour
         {
             HideLoading();
 
+            isProcessing = false;
+
             statusText.text =
                 "API Error: " + request.error;
 
-            AndroidTTS.Speak(
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
                 "Poster generation failed."
             );
 
@@ -189,7 +223,7 @@ public class FullPosterImageAPI : MonoBehaviour
             statusText.text =
                 "No poster image returned.";
 
-            AndroidTTS.Speak(
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
                 "No poster image returned."
             );
 
@@ -227,6 +261,8 @@ public class FullPosterImageAPI : MonoBehaviour
 
         if (request.result != UnityWebRequest.Result.Success)
         {
+            isProcessing = false;
+
             statusText.text = "Image download error: " + request.error;
             yield break;
         }
@@ -273,25 +309,37 @@ public class FullPosterImageAPI : MonoBehaviour
 
         HideLoading();
 
-        if (!isRevision)
+        isProcessing = false;
+
+        if (!isLoadingSavedData)
         {
-            AndroidTTS.Speak(
-                "Poster generated successfully. Opening poster description page."
-            );
-        }
-        else
-        {
-            AndroidTTS.Speak( 
-                "Revised poster generated successfully."
-            );
+            if (!isRevision)
+            {
+                AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+                    "Poster generated successfully. Opening poster description page."
+                );
+            }
+            else
+            {
+                AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+                    "Revised poster generated successfully."
+                );
+            }
         }
 
-        if (!isRevision && !isLoadingSavedData)
+        if (!isLoadingSavedData)
         {
-            promptPanel.SetActive(false);
-            outputPanel.SetActive(true);
+            isDescriptionReady = false;
+
+            nextButtonInOutput.interactable = false;
 
             StartCoroutine(DescribeGeneratedImage());
+
+            if (!isRevision)
+            {
+                promptPanel.SetActive(false);
+                outputPanel.SetActive(true); 
+            }
         }
 
     }
@@ -346,6 +394,7 @@ public class FullPosterImageAPI : MonoBehaviour
 
     private IEnumerator DescribeGeneratedImage()
     {
+
         string url =
             backendUrl + "/describe-generated-image";
 
@@ -378,8 +427,17 @@ public class FullPosterImageAPI : MonoBehaviour
 
         if (request.result != UnityWebRequest.Result.Success)
         {
-            statusText.text =
-                "Describe API Error";
+            HideLoading();
+
+            statusText.text = "Describe API Error";
+
+            isDescriptionReady = true;
+
+            outputPanel.SetActive(true);
+
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+                "Unable to analyze the poster."
+            );
 
             yield break;
         }
@@ -393,6 +451,14 @@ public class FullPosterImageAPI : MonoBehaviour
 
         lastDescription =
             response.description.detailedDescription;
+
+        if (isRevisionMode)
+        {
+            revisionHistory +=
+                "\n\nRevision " + currentRevisionCount +
+                "\nRequest: " + revisionPromptInput.text +
+                "\nResult: " + lastDescription;
+        }
 
         ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
 
@@ -408,15 +474,48 @@ public class FullPosterImageAPI : MonoBehaviour
 
         if (!isRevisionMode)
         {
-            outputPanel.SetActive(false);
-            descriptionPanel.SetActive(true);
+
         }
 
-        ReadDescription();
+        // Only auto-read if Accessibility is ON
+        if (UAP_AccessibilityManager.IsEnabled())
+        {
+            ReadDescription();
+        }
+
+        isDescriptionReady = true;
+
+        HideLoading();
+
+        nextButtonInOutput.interactable = true;
+    }
+
+    public void OpenDescription()
+    {
+        // History mode
+        if (ParticipantManager.Instance.CurrentParticipant != null &&
+            ParticipantManager.Instance.CurrentParticipant.isCompleted)
+        {
+            CloseAllPanels();
+            descriptionPanel.SetActive(true);
+            return;
+        }
+
+        if (!isDescriptionReady)
+        {
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Please wait. Description is still loading.");
+            return;
+        }
+
+        CloseAllPanels();
+        descriptionPanel.SetActive(true);
     }
 
     public void ReplayDescription()
     {
+        if (!AccessibilityToggle.AccessibilityEnabled)
+            return;
+
         ReadDescription();
     }
 
@@ -425,7 +524,7 @@ public class FullPosterImageAPI : MonoBehaviour
         if (string.IsNullOrEmpty(lastDescription))
             return;
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
         lastDescription
         );
     }
@@ -439,7 +538,7 @@ public class FullPosterImageAPI : MonoBehaviour
         originalPreviewRawImage.texture =
             originalPosterTexture;
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Opening original poster preview."
         );
     }
@@ -450,7 +549,7 @@ public class FullPosterImageAPI : MonoBehaviour
 
         revisionPanel.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Returning to revision page."
         );
     }
@@ -476,6 +575,8 @@ public class FullPosterImageAPI : MonoBehaviour
             return;
         }
 
+         revisionHistory += "\nRevision " + (currentRevisionCount + 1) + ": " + revisionPromptInput.text;
+
         string finalRevisionPrompt =
             BuildRevisionPrompt();
 
@@ -497,23 +598,31 @@ public class FullPosterImageAPI : MonoBehaviour
 
         finalExplanationPanel.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Maximum revisions reached. Please provide your final explanation."
         );
     }
     private string BuildRevisionPrompt()
     {
         return
-            "Original Prompt: " +
-            promptInput.text +
+            "Original Prompt:\n"
+            + promptInput.text
 
-            ". Current Poster Description: " +
-            lastDescription +
+            + "\n\nCurrent Poster Description:\n"
+            + lastDescription
 
-            ". User Revision Request: " +
-            revisionPromptInput.text +
+            + "\n\nAccepted Revision History:\n"
+            + revisionHistory
 
-            ". Improve the existing poster while keeping the same theme, purpose, accessibility requirements, and overall message. Apply only the requested changes.";
+            + "\n\nLatest Revision Request:\n"
+            + revisionPromptInput.text
+
+            + "\n\nIMPORTANT RULES:\n"
+            + "- Preserve all previously accepted changes.\n"
+            + "- Do not remove existing objects.\n"
+            + "- Only apply the newest requested modification.\n"
+            + "- Keep the same poster purpose and accessibility design.\n"
+            + "- Generate a new improved version.";
     }
 
 
@@ -574,7 +683,7 @@ public class FullPosterImageAPI : MonoBehaviour
         // SUCCESS
         HideLoading();
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Revision "
             + currentRevisionCount
             + " completed. "
@@ -693,10 +802,12 @@ public class FullPosterImageAPI : MonoBehaviour
         {
             HideLoading();
 
+            isProcessing = false;
+
             statusText.text =
                 "Score API Error: " + request.error;
 
-            AndroidTTS.Speak(
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
                 "Evaluation failed. Please try again."
             );
 
@@ -708,7 +819,7 @@ public class FullPosterImageAPI : MonoBehaviour
 
         HideLoading();
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Evaluation completed successfully. Opening score page."
         );
 
@@ -728,7 +839,10 @@ public class FullPosterImageAPI : MonoBehaviour
 
         yield return new WaitForSeconds(1f);
 
-        ReadScore();
+        if (UAP_AccessibilityManager.IsEnabled())
+        {
+            ReadScore();
+        }
 
 
     }
@@ -880,12 +994,13 @@ public class FullPosterImageAPI : MonoBehaviour
 
     public void ReadScore()
     {
+        if (!AccessibilityToggle.AccessibilityEnabled)
+            return;
+
         if (string.IsNullOrEmpty(scoreSpeechText))
             return;
 
-        AndroidTTS.Speak(
-            scoreSpeechText
-        );
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(scoreSpeechText);
     }
 
     public void ShowLoading(string message)
@@ -907,7 +1022,7 @@ public class FullPosterImageAPI : MonoBehaviour
     {
         while (loadingPanel.activeSelf)
         {
-            AndroidTTS.Speak(message);
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(message);
 
             yield return new WaitForSeconds(6f);
         }
@@ -941,7 +1056,7 @@ public class FullPosterImageAPI : MonoBehaviour
                 originalPosterTexture;
         }
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Opening revised poster."
         );
     }
@@ -963,7 +1078,7 @@ public class FullPosterImageAPI : MonoBehaviour
                 originalPosterTexture;
         }
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Opening final revised poster."
         );
     }
@@ -974,7 +1089,7 @@ public class FullPosterImageAPI : MonoBehaviour
 
         scorePanel.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Returning to score page."
         );
     }
@@ -985,7 +1100,7 @@ public class FullPosterImageAPI : MonoBehaviour
 
         revisionPanel.SetActive(true);
 
-        AndroidTTS.Speak(
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Returning to revision page."
         );
     }
@@ -1052,6 +1167,14 @@ public class FullPosterImageAPI : MonoBehaviour
 
         detailsText.text = data.posterDescription;
 
+        lastDescription = data.posterDescription;
+
+        isDescriptionReady =
+            !string.IsNullOrEmpty(data.posterDescription);
+
+        nextButtonInOutput.interactable =
+            isDescriptionReady;
+
         //---------------------------------------
         // Score
         //---------------------------------------
@@ -1096,11 +1219,26 @@ public class FullPosterImageAPI : MonoBehaviour
         }
 
 
-        Debug.Log("Participant restored successfully.");
+        if (ParticipantManager.Instance.CurrentParticipant.isCompleted)
+        {
+            SetSubmissionReadOnly(true);
+        }
+        else
+        {
+            SetSubmissionReadOnly(false);
+        }
+
     }
+
+
 
     public void PrepareForNewChallenge()
     {
+        // State
+        isProcessing = false;
+        isRevisionMode = false;
+        isDescriptionReady = false;
+
         currentRevisionCount = 0;
 
         latestImageUrl = "";
@@ -1108,23 +1246,52 @@ public class FullPosterImageAPI : MonoBehaviour
         latestStoragePath = "";
 
         lastDescription = "";
+        revisionHistory = "";
         scoreSpeechText = "";
 
-        originalPosterTexture = null;
-        revisedPosterTexture = null;
-
+        // Text
         promptInput.text = "";
         revisionPromptInput.text = "";
         finalExplanationInput.text = "";
-
         detailsText.text = "";
 
+        promptQualityText.text = "";
+        posterMessageText.text = "";
+        designOutputText.text = "";
+        accessibilityText.text = "";
+        revisionText.text = "";
+        finalExplanationScoreText.text = "";
+        totalScoreText.text = "";
+        feedbackText.text = "";
+        suggestionText.text = "";
+
+        // Images
         posterRawImage.texture = null;
         descriptionRawImage.texture = null;
         revisionPosterRawImage.texture = null;
         scoreReviewRawImage.texture = null;
 
-        Debug.Log("New Challenge Ready");
+        originalPosterTexture = null;
+        revisedPosterTexture = null;
+
+        // Restore UI
+        HideLoading();
+
+        promptInput.interactable = true;
+        revisionPromptInput.interactable = true;
+        finalExplanationInput.interactable = true;
+
+        nextButtonInOutput.interactable = true;
+
+        generatePosterButton.SetActive(true);
+        generateRevisionButton.SetActive(true);
+        calculateScoreButton.SetActive(true);
+
+        sample1.SetActive(true);
+        sample2.SetActive(true);
+        sample3.SetActive(true);
+
+        Debug.Log("PrepareForNewChallenge()");
     }
 
 
@@ -1168,14 +1335,31 @@ public class FullPosterImageAPI : MonoBehaviour
         revisionPosterRawImage.texture = null;
         scoreReviewRawImage.texture = null;
         originalPosterTexture = null;
-        revisedPosterTexture = null; 
+        revisedPosterTexture = null;
+
+        isDescriptionReady = false;
+        isRevisionMode = false;
+        isProcessing = false;
+
+        revisionHistory = "";
+
+        nextButtonInOutput.interactable = true;
+
+        SetSubmissionReadOnly(false);
+
+        HideLoading();
 
 
     }
 
     public void CloseAllPanels()
     {
+        loginPanel.SetActive(false);
+        registerPanel.SetActive(false);
         mainMenuPanel.SetActive(false);
+        instructionPanel.SetActive(false);
+        challengePanel.SetActive(false);
+        participantDetailsPanel.SetActive(false);
         promptPanel.SetActive(false);
         outputPanel.SetActive(false);
         descriptionPanel.SetActive(false);
@@ -1184,6 +1368,24 @@ public class FullPosterImageAPI : MonoBehaviour
         scorePanel.SetActive(false);
         scorePosterReviewPanel.SetActive(false);
         originalPreviewPanel.SetActive(false);
+        leaderboardPanel.SetActive(false);
+        submittedPanel.SetActive(false);
+    }
+
+    public void SetSubmissionReadOnly(bool isReadOnly)
+    {
+        // Input Fields
+        promptInput.interactable = !isReadOnly;
+        revisionPromptInput.interactable = !isReadOnly;
+        finalExplanationInput.interactable = !isReadOnly;
+
+        // Hide buttons
+        generatePosterButton.SetActive(!isReadOnly);
+        generateRevisionButton.SetActive(!isReadOnly);
+        calculateScoreButton.SetActive(!isReadOnly);
+        sample1.SetActive(!isReadOnly);
+        sample2.SetActive(!isReadOnly);
+        sample3.SetActive(!isReadOnly);
     }
 
 

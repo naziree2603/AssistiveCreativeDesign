@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using static AccessibilityToggle;
+using static FirestoreAccountManager;
 
 public class LoginManager : MonoBehaviour
 {
@@ -34,14 +36,32 @@ public class LoginManager : MonoBehaviour
             return;
         }
 
-        bool success = await FirestoreAccountManager.Instance.Login(username, password);
+        LoginResult result = await FirestoreAccountManager.Instance.Login(username, password);
 
-        Debug.Log("Login Result : " + success);
-
-        if (!success)
+        switch (result)
         {
-            messageText.text = "Invalid username or password.";
-            return;
+            case LoginResult.UserNotFound:
+
+                messageText.text =
+                    "Username not found.\nPlease create a new account.";
+
+                AccessibilitySpeech.SpeakContent(
+                    "Username not found. Please create a new account.");
+
+                return;
+
+            case LoginResult.WrongPassword:
+
+                messageText.text =
+                    "Incorrect password.\nPlease try again.";
+
+                AccessibilitySpeech.SpeakContent(
+                    "Incorrect password. Please try again."); 
+
+                return;
+
+            case LoginResult.Success:
+                break;
         }
 
         // Reset previous session
@@ -84,7 +104,7 @@ public class LoginManager : MonoBehaviour
 
         messageText.text = "";
 
-        AndroidTTS.Speak("You have logged out.");
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("You have logged out.");
     }
 
 

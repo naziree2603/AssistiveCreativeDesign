@@ -29,6 +29,13 @@
             }
         }
 
+    public enum LoginResult
+    {
+        Success,
+        UserNotFound,
+        WrongPassword
+    }
+
     private async void Start()
     {
         var status = await FirebaseApp.CheckAndFixDependenciesAsync();
@@ -85,35 +92,33 @@
             return true;
         }
 
-        public async Task<bool> Login(string username, string password)
+    public async Task<LoginResult> Login(string username, string password)
+    {
+        QuerySnapshot snapshot =
+            await db.Collection("users")
+            .WhereEqualTo("username", username)
+            .GetSnapshotAsync();
+
+        if (snapshot.Count == 0)
         {
-            QuerySnapshot snapshot =
-                await db.Collection("users")
-                .WhereEqualTo("username", username)
-                .GetSnapshotAsync();
+            Debug.Log("Username not found.");
+            return LoginResult.UserNotFound;
+        }
 
-            if (snapshot.Count == 0)
-            {
-                Debug.Log("Username not found.");
-                return false;
-            }
+        DocumentSnapshot document = snapshot.Documents.First();
 
-            DocumentSnapshot document = snapshot.Documents.First();
+        Dictionary<string, object> data = document.ToDictionary();
 
-            Dictionary<string, object> data = document.ToDictionary();
-
-            if (data["password"].ToString() != password)
-            {
-                Debug.Log("Wrong password.");
-                return false;
-            }
+        if (data["password"].ToString() != password)
+        {
+            Debug.Log("Wrong password.");
+            return LoginResult.WrongPassword;
+        }
 
         CurrentAccount = new AccountData();
 
         CurrentAccount.documentID = document.Id;
-
         CurrentAccount.username = GetString(data, "username");
-
         CurrentAccount.password = GetString(data, "password");
 
         MainMenuManager menu = FindFirstObjectByType<MainMenuManager>();
@@ -125,10 +130,10 @@
 
         Debug.Log("Login Success");
 
-            return true;
-        }
+        return LoginResult.Success;
+    }
 
-        private string GetString(Dictionary<string, object> data, string key)
+    private string GetString(Dictionary<string, object> data, string key)
         {
             if (!data.ContainsKey(key))
                 return "";

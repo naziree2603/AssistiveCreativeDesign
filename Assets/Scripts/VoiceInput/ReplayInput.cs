@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using static AccessibilityToggle;
 
 public class ReplayInput : MonoBehaviour
 {
@@ -14,11 +15,11 @@ public class ReplayInput : MonoBehaviour
 
         if (string.IsNullOrEmpty(text))
         {
-            AndroidTTS.Speak("The input field is empty.");
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("The input field is empty.");
             return;
         }
 
         AndroidTTS.StopSpeaking();
-        AndroidTTS.Speak(text);
+        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(text);
     }
 }

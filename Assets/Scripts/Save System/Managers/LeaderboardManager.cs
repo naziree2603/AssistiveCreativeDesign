@@ -30,8 +30,6 @@ public class LeaderboardManager : MonoBehaviour
         Debug.Log("ChallengeList Count = " +
             ChallengeManager.Instance.ChallengeList.Count);
 
-        Debug.Log("Current Participant ChallengeID = " +
-            ParticipantManager.Instance.CurrentParticipant.challengeID);
 
         if (FirestoreEntryManager.Instance == null)
         {

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
+using static AccessibilityToggle;
 
 public class ChallengePanelManager : MonoBehaviour
 {
@@ -46,7 +47,7 @@ public class ChallengePanelManager : MonoBehaviour
         if (eventCodeInput.text.Trim() != challenge.eventCode)
         {
             statusText.text = "Invalid event code.";
-            AndroidTTS.Speak("Invalid event code. Please try again.");
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Invalid event code. Please try again.");
             return;
         }
 
