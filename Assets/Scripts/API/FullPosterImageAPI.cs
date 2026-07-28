@@ -488,6 +488,17 @@ public class FullPosterImageAPI : MonoBehaviour
         HideLoading();
 
         nextButtonInOutput.interactable = true;
+
+        // Open Description automatically
+        CloseAllPanels();
+
+        descriptionPanel.SetActive(true);
+
+        // Read only after panel is visible
+        if (UAP_AccessibilityManager.IsEnabled())
+        {
+            ReadDescription();
+        }
     }
 
     public void OpenDescription()
