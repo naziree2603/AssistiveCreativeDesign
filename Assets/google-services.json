@@ -7,6 +7,44 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:206802698105:android:af0191a38cbfaca3dd79a8",
+        "android_client_info": {
+          "package_name": "com.Goolee.AIAssistiveDesign"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAvwJGlTQsejpCxaEido1gv2nHDE4PLe2g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:206802698105:android:851ab559aee28b24dd79a8",
+        "android_client_info": {
+          "package_name": "com.Goolee.IntelligentInclusiveAssistiveDesign"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAvwJGlTQsejpCxaEido1gv2nHDE4PLe2g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:206802698105:android:9666fed477f19f6add79a8",
         "android_client_info": {
           "package_name": "com.goolee.iiadv2"

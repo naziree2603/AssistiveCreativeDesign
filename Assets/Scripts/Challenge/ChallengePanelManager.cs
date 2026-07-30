@@ -72,11 +72,24 @@ public class ChallengePanelManager : MonoBehaviour
             ProfileManager.Instance.CurrentProfile;
 
         // Create a new entry for this challenge
-        ParticipantManager.Instance.InitializeNewEntry(profile, challenge);
+        ParticipantData unfinished = await FirestoreEntryManager.Instance.GetUnfinishedEntry(accountID, challenge.challengeID);
 
-        posterSystem.PrepareForNewChallenge();
+        if (unfinished != null)
+        {
+            ParticipantManager.Instance.CurrentParticipant = unfinished;
 
-        mainMenuManager.OpenPrompt();
+            posterSystem.LoadParticipant();
+
+            mainMenuManager.OpenPrompt();
+        }
+        else
+        {
+            posterSystem.PrepareForNewChallenge();
+
+            ParticipantManager.Instance.InitializeNewEntry(profile, challenge);
+
+            mainMenuManager.OpenPrompt();
+        }
     }
 
     private IEnumerator HidePopupAfterDelay()

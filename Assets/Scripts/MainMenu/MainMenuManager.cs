@@ -47,7 +47,7 @@ public class MainMenuManager : MonoBehaviour
     void WelcomeSpeech()
     {
         AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-            "Welcome to Intelligent Inclusive Assistive Design."
+            "Welcome to AI Assistive Design."
         );
 
     }
@@ -76,7 +76,7 @@ public class MainMenuManager : MonoBehaviour
         AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
             "Opening instructions. Page 1 of 4. " +
 
-            "Welcome to Intelligent Inclusive Assistive Design. " +
+            "Welcome to AI Assistive Design. " +
 
             "An AI powered poster creation platform designed to support blind and visually impaired participants in creating accessible posters independently. " +
 
@@ -153,7 +153,7 @@ public class MainMenuManager : MonoBehaviour
             "Wait until the microphone has finished listening before speaking again. " +
             "Ensure your device has an active internet connection for AI services. " +
             "Listen carefully to the poster description before submitting your final explanation. " +
-            "Thank you for using Intelligent Inclusive Assistive Design. " +
+            "Thank you for using AI Assistive Design. " +
             "Good luck and enjoy creating accessible AI powered posters."
             );
     }
@@ -181,7 +181,7 @@ public class MainMenuManager : MonoBehaviour
     {
 
         AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-            "Back to Main Menu Page. Welcome to Intelligent Inclusive Assistive Design. " +
+            "Back to Main Menu Page. Welcome to AI Assistive Design. " +
             "Swipe left or right to navigate menu items. " +
             "Double tap to activate a button."
         );

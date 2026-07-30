@@ -75,6 +75,7 @@ public class FullPosterImageAPI : MonoBehaviour
     private bool isProcessing = false;
 
     private bool isDescriptionReady = false;
+    private bool hasGeneratedRevision = false;
 
     [Header("Panel Page")]
     public GameObject loginPanel;
@@ -102,7 +103,9 @@ public class FullPosterImageAPI : MonoBehaviour
     [SerializeField] private RawImage originalPreviewRawImage;
 
     [Header("Action Buttons")]
-    [SerializeField] private Button nextButtonInOutput;
+    [SerializeField] private Button outputNextButton;
+    [SerializeField] private Button revisionNextButton;
+    [SerializeField] private Button finalExplanationNextButton;
     [SerializeField] private GameObject generatePosterButton;
     [SerializeField] private GameObject generateRevisionButton;
     [SerializeField] private GameObject calculateScoreButton;
@@ -297,12 +300,14 @@ public class FullPosterImageAPI : MonoBehaviour
         }
         else
         {
-            // Revised Poster
             if (revisionPosterRawImage != null)
             {
                 revisionPosterRawImage.texture = texture;
                 revisedPosterTexture = texture;
             }
+
+            hasGeneratedRevision = true;
+            revisionNextButton.interactable = true;
         }
 
         posterRawImage.SetNativeSize();
@@ -331,7 +336,7 @@ public class FullPosterImageAPI : MonoBehaviour
         {
             isDescriptionReady = false;
 
-            nextButtonInOutput.interactable = false;
+            outputNextButton.interactable = false;
 
             StartCoroutine(DescribeGeneratedImage());
 
@@ -487,12 +492,22 @@ public class FullPosterImageAPI : MonoBehaviour
 
         HideLoading();
 
-        nextButtonInOutput.interactable = true;
+        outputNextButton.interactable = true;
 
         // Open Description automatically
         CloseAllPanels();
 
-        descriptionPanel.SetActive(true);
+        if (isRevisionMode)
+        {
+            revisionPanel.SetActive(true);
+        }
+        else
+        {
+            descriptionPanel.SetActive(true);
+        }
+
+        // Revision flow is finished
+        isRevisionMode = false;
 
         // Read only after panel is visible
         if (UAP_AccessibilityManager.IsEnabled())
@@ -540,6 +555,9 @@ public class FullPosterImageAPI : MonoBehaviour
         );
     }
 
+
+
+
     public void OpenOriginalPoster()
     {
         revisionPanel.SetActive(false);
@@ -567,6 +585,16 @@ public class FullPosterImageAPI : MonoBehaviour
 
     public void GenerateRevisionPoster()
     {
+        if (string.IsNullOrWhiteSpace(revisionPromptInput.text))
+        {
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+                "Please enter a revision prompt."
+            );
+
+            return;
+        }
+
+
         if (currentRevisionCount >= maxRevisionCount)
         {
             ShowLoading(
@@ -762,6 +790,16 @@ public class FullPosterImageAPI : MonoBehaviour
     //AI Scoring
     public void CalculateAIScore()
     {
+        if (string.IsNullOrWhiteSpace(finalExplanationInput.text))
+        {
+            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+                "Please enter your final explanation."
+            );
+
+            return;
+        }
+
+
         if (string.IsNullOrEmpty(latestImageUrl))
         {
             statusText.text = "Generate poster first.";
@@ -844,7 +882,7 @@ public class FullPosterImageAPI : MonoBehaviour
 
         DisplayScore(response);
 
-        finalExplanationPanel.SetActive(false);
+        CloseAllPanels();
 
         scorePanel.SetActive(true);
 
@@ -1166,11 +1204,19 @@ public class FullPosterImageAPI : MonoBehaviour
 
         revisionPromptInput.text = data.revisionPrompt;
 
+     
+
         //---------------------------------------
         // Final Explanation
         //---------------------------------------
 
         finalExplanationInput.text = data.finalExplanation;
+
+        if (data.isCompleted)
+        {
+            finalExplanationNextButton.interactable = true;
+        }
+
 
         //---------------------------------------
         // Description
@@ -1183,7 +1229,7 @@ public class FullPosterImageAPI : MonoBehaviour
         isDescriptionReady =
             !string.IsNullOrEmpty(data.posterDescription);
 
-        nextButtonInOutput.interactable =
+        outputNextButton.interactable =
             isDescriptionReady;
 
         //---------------------------------------
@@ -1249,6 +1295,8 @@ public class FullPosterImageAPI : MonoBehaviour
         isProcessing = false;
         isRevisionMode = false;
         isDescriptionReady = false;
+        hasGeneratedRevision = false;
+        revisionNextButton.interactable = false;
 
         currentRevisionCount = 0;
 
@@ -1292,7 +1340,7 @@ public class FullPosterImageAPI : MonoBehaviour
         revisionPromptInput.interactable = true;
         finalExplanationInput.interactable = true;
 
-        nextButtonInOutput.interactable = true;
+        outputNextButton.interactable = true;
 
         generatePosterButton.SetActive(true);
         generateRevisionButton.SetActive(true);
@@ -1301,6 +1349,12 @@ public class FullPosterImageAPI : MonoBehaviour
         sample1.SetActive(true);
         sample2.SetActive(true);
         sample3.SetActive(true);
+
+        outputNextButton.interactable = true;
+
+        revisionNextButton.interactable = false;
+
+        finalExplanationNextButton.interactable = false;
 
         Debug.Log("PrepareForNewChallenge()");
     }
@@ -1354,7 +1408,14 @@ public class FullPosterImageAPI : MonoBehaviour
 
         revisionHistory = "";
 
-        nextButtonInOutput.interactable = true;
+        outputNextButton.interactable = true;
+
+        hasGeneratedRevision = false;
+        revisionNextButton.interactable = false;
+
+        finalExplanationNextButton.interactable = false;
+
+
 
         SetSubmissionReadOnly(false);
 
@@ -1362,6 +1423,8 @@ public class FullPosterImageAPI : MonoBehaviour
 
 
     }
+
+
 
     public void CloseAllPanels()
     {
@@ -1398,6 +1461,8 @@ public class FullPosterImageAPI : MonoBehaviour
         sample2.SetActive(!isReadOnly);
         sample3.SetActive(!isReadOnly);
     }
+
+
 
 
 }

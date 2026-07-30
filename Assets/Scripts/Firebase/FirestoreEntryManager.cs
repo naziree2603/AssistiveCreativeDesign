@@ -332,6 +332,25 @@ public class FirestoreEntryManager : MonoBehaviour
         return entries;
     }
 
+    public async Task<ParticipantData> GetUnfinishedEntry(
+    string accountID,
+    string challengeID)
+    {
+        QuerySnapshot snapshot = await db.Collection("entries")
+            .WhereEqualTo("accountID", accountID)
+            .WhereEqualTo("challengeID", challengeID)
+            .WhereEqualTo("isCompleted", false)
+            .Limit(1)
+            .GetSnapshotAsync();
+
+        foreach (DocumentSnapshot document in snapshot.Documents)
+        {
+            return await LoadEntry(document.Id);
+        }
+
+        return null;
+    }
+
     public async Task<bool> HasCompletedSubmission(string accountID)
     {
         QuerySnapshot snapshot = await db.Collection("entries")
