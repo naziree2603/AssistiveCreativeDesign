@@ -13891,7 +13891,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Generate Real Poster Image
+  m_text: Generate Poster Image
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 2c868b9672473cc4c9d5a92d2d81319d, type: 2}
   m_sharedMaterial: {fileID: 1681294760521932752, guid: 2c868b9672473cc4c9d5a92d2d81319d, type: 2}
@@ -23907,7 +23907,7 @@ MonoBehaviour:
   m_PrefixIsLocalizationKey: 0
   m_PrefixIsPostFix: 0
   m_FilterText: 1
-  m_Text: SUBMITTED
+  m_Text: HISTORY
   m_NameLabel: {fileID: 562099243}
   m_AdditionalNameLabels: []
   m_TestList: []
