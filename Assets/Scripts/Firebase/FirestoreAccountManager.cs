@@ -12,6 +12,8 @@
 
         public AccountData CurrentAccount;
 
+        public bool IsReady { get; private set; }
+
         FirebaseFirestore db;
 
 
@@ -36,6 +38,13 @@
         WrongPassword
     }
 
+    public enum RegisterResult
+    {
+        Success,
+        UsernameExists,
+        EmailExists
+    }
+
     private async void Start()
     {
         var status = await FirebaseApp.CheckAndFixDependenciesAsync();
@@ -45,6 +54,8 @@
         if (status == DependencyStatus.Available)
         {
             db = FirebaseFirestore.DefaultInstance;
+
+            IsReady = true;
             Debug.Log("Firestore Ready");
         }
         else
@@ -53,28 +64,33 @@
         }
     }
 
-    public async Task<bool> Register(string username, string password)
+    public async Task <RegisterResult> Register(string username,string email,string password)
+    {
+        // Check if username already exists
+        QuerySnapshot usernameSnapshot = await db.Collection("users").WhereEqualTo("username", username).GetSnapshotAsync();
+
+        if (usernameSnapshot.Count > 0)
         {
-            // Check if username already exists
-            QuerySnapshot snapshot =
-                await db.Collection("users")
-                .WhereEqualTo("username", username)
-                .GetSnapshotAsync();
+            return RegisterResult.UsernameExists;
+        }
 
-            if (snapshot.Count > 0)
-            {
-                Debug.Log("Username already exists.");
+        QuerySnapshot emailSnapshot = await db.Collection("users").WhereEqualTo("email", email).GetSnapshotAsync();
 
-                return false;
-            }
+        if (emailSnapshot.Count > 0)
+        {
+            return RegisterResult.EmailExists;
+        }
 
-            Dictionary<string, object> data = new Dictionary<string, object>();
+
+
+        Dictionary<string, object> data = new Dictionary<string, object>();
 
         //--------------------------------
         // Login
         //--------------------------------
 
         data["username"] = username;
+        data["email"] = email;
         data["password"] = password;
 
 
@@ -89,8 +105,8 @@
 
             Debug.Log("Register Success");
 
-            return true;
-        }
+        return RegisterResult.Success;
+    }
 
     public async Task<LoginResult> Login(string username, string password)
     {
@@ -121,6 +137,10 @@
         CurrentAccount.username = GetString(data, "username");
         CurrentAccount.password = GetString(data, "password");
 
+        PlayerPrefs.SetString("LastLoginUserID", document.Id);
+
+        PlayerPrefs.Save();
+
         MainMenuManager menu = FindFirstObjectByType<MainMenuManager>();
 
         if (menu != null)
@@ -131,6 +151,48 @@
         Debug.Log("Login Success");
 
         return LoginResult.Success;
+    }
+
+    public async Task<bool> AutoLogin()
+    {
+        string documentID =
+            PlayerPrefs.GetString(
+                "LastLoginUserID",
+                "");
+
+        if (string.IsNullOrEmpty(documentID))
+            return false;
+
+        DocumentSnapshot doc =
+            await db.Collection("users")
+            .Document(documentID)
+            .GetSnapshotAsync();
+
+        if (!doc.Exists)
+            return false;
+
+        Dictionary<string, object> data =
+            doc.ToDictionary();
+
+        CurrentAccount = new AccountData();
+
+        MainMenuManager menu = FindFirstObjectByType<MainMenuManager>();
+
+        if (menu != null)
+        {
+            await menu.RefreshButtons();
+        }
+
+        CurrentAccount.documentID =
+            documentID;
+
+        CurrentAccount.username =
+            data["username"].ToString();
+
+        CurrentAccount.password =
+            data["password"].ToString();
+
+        return true;
     }
 
     private string GetString(Dictionary<string, object> data, string key)

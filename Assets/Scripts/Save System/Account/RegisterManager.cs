@@ -5,9 +5,13 @@ public class RegisterManager : MonoBehaviour
 {
     [Header("Input")]
 
+    public TMP_InputField emailInput;
+
     public TMP_InputField usernameInput;
 
     public TMP_InputField passwordInput;
+
+    public TMP_InputField confirmPasswordInput;
 
     public TMP_Text messageText;
 
@@ -19,11 +23,16 @@ public class RegisterManager : MonoBehaviour
 
     public async void Register()
     {
+        string email =emailInput.text.Trim().ToLower();
+
         string username =
             usernameInput.text.Trim();
 
         string password =
             passwordInput.text;
+
+        string confirmPassword =
+            confirmPasswordInput.text;
 
 
         if (username == "")
@@ -49,6 +58,23 @@ public class RegisterManager : MonoBehaviour
         }
 
 
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            messageText.text =
+                "Please enter email.";
+
+            return;
+        }
+
+        if (!email.Contains("@") || !email.Contains("."))
+        {
+            messageText.text =
+                "Please enter a valid email.";
+
+            return;
+        }
+
+
         if (password == "")
         {
             messageText.text = "Please enter password.";
@@ -61,17 +87,56 @@ public class RegisterManager : MonoBehaviour
             return;
         }
 
-
-        bool success = await FirestoreAccountManager.Instance.Register(username, password);
-
-        if (!success)
+        if (string.IsNullOrWhiteSpace(confirmPassword))
         {
-            messageText.text = "Registration failed.";
+            messageText.text =
+                "Please confirm password.";
 
             return;
         }
 
-        messageText.text ="Registration successful.";
+        if (password != confirmPassword)
+        {
+            messageText.text =
+                "Passwords do not match.";
+
+            return;
+        }
+
+
+        FirestoreAccountManager.RegisterResult result = await FirestoreAccountManager.Instance.Register(username,email,password);
+
+        switch (result)
+        {
+            case FirestoreAccountManager.RegisterResult.UsernameExists:
+
+                messageText.text =
+                    "Username already exists.";
+
+                return;
+
+            case FirestoreAccountManager.RegisterResult.EmailExists:
+
+                messageText.text =
+                    "Email already registered.";
+
+                return;
+
+            case FirestoreAccountManager.RegisterResult.Success:
+
+                messageText.text =
+                    "Registration successful.";
+
+                usernameInput.text = "";
+                emailInput.text = "";
+                passwordInput.text = "";
+                confirmPasswordInput.text = "";
+
+                registerPanel.SetActive(false);
+                loginPanel.SetActive(true);
+
+                break;
+        }
 
 
     }

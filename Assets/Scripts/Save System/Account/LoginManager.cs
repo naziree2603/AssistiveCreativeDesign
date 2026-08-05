@@ -19,6 +19,37 @@ public class LoginManager : MonoBehaviour
 
     public FullPosterImageAPI posterSystem;
 
+    private async void Start()
+    {
+        // Wait until Firebase is ready
+        while (FirestoreAccountManager.Instance == null)
+            await System.Threading.Tasks.Task.Yield();
+
+        while (!FirestoreAccountManager.Instance.IsReady)
+            await System.Threading.Tasks.Task.Yield();
+
+        bool success =
+            await FirestoreAccountManager.Instance.AutoLogin();
+
+        if (success)
+        {
+            Debug.Log("Auto Login Success");
+
+            loginPanel.SetActive(false);
+
+            mainMenuPanel.SetActive(true);
+
+            await FindFirstObjectByType<MainMenuManager>()
+                .RefreshButtons();
+        }
+        else
+        {
+            loginPanel.SetActive(true);
+
+            mainMenuPanel.SetActive(false);
+        }
+    }
+
     public async void Login()
     {
         string username = usernameInput.text.Trim();
@@ -87,6 +118,12 @@ public class LoginManager : MonoBehaviour
     public void Logout()
     {
         FirestoreAccountManager.Instance.CurrentAccount = null;
+
+        PlayerPrefs.DeleteKey("LastLoginUserID");
+
+        PlayerPrefs.DeleteKey("LastLoginUsername");
+
+        PlayerPrefs.Save();
 
         ProfileManager.Instance.ResetProfile();
 
