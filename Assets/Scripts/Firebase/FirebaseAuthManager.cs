@@ -55,6 +55,7 @@ public class FirebaseAuthManager : MonoBehaviour
 
             FirebaseFirestore db = FirebaseFirestore.DefaultInstance;
 
+
             Dictionary<string, object> data = new Dictionary<string, object>();
 
             data["username"] = username;

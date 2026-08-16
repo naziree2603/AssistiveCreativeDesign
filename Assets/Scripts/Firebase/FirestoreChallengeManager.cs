@@ -31,6 +31,8 @@ public class FirestoreChallengeManager : MonoBehaviour
         Instance = this;
 
         db = FirebaseFirestore.DefaultInstance;
+
+
     }
 
     //------------------------------------------------

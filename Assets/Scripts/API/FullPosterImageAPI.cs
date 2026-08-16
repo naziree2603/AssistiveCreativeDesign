@@ -59,7 +59,6 @@ public class FullPosterImageAPI : MonoBehaviour
     [SerializeField] private TMP_Text posterMessageText;
     [SerializeField] private TMP_Text designOutputText;
     [SerializeField] private TMP_Text accessibilityText;
-    [SerializeField] private TMP_Text revisionText;
     [SerializeField] private TMP_Text finalExplanationScoreText;
     [SerializeField] private TMP_Text totalScoreText;
     [SerializeField] private TMP_Text feedbackText;
@@ -75,7 +74,7 @@ public class FullPosterImageAPI : MonoBehaviour
     private bool isProcessing = false;
 
     private bool isDescriptionReady = false;
-    private bool hasGeneratedRevision = false;
+    
 
     [Header("Panel Page")]
     public GameObject loginPanel;
@@ -104,7 +103,6 @@ public class FullPosterImageAPI : MonoBehaviour
 
     [Header("Action Buttons")]
     [SerializeField] private Button outputNextButton;
-    [SerializeField] private Button revisionNextButton;
     [SerializeField] private Button finalExplanationNextButton;
     [SerializeField] private GameObject generatePosterButton;
     [SerializeField] private GameObject generateRevisionButton;
@@ -306,8 +304,7 @@ public class FullPosterImageAPI : MonoBehaviour
                 revisedPosterTexture = texture;
             }
 
-            hasGeneratedRevision = true;
-            revisionNextButton.interactable = true;
+
         }
 
         posterRawImage.SetNativeSize();
@@ -790,6 +787,12 @@ public class FullPosterImageAPI : MonoBehaviour
     //AI Scoring
     public void CalculateAIScore()
     {
+        if (string.IsNullOrWhiteSpace(revisionPromptInput.text))
+        {
+            revisionPromptInput.text =
+                "No changes required. The participant accepted the original poster because it already met the design objectives.";
+        }
+
         if (string.IsNullOrWhiteSpace(finalExplanationInput.text))
         {
             AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
@@ -897,32 +900,23 @@ public class FullPosterImageAPI : MonoBehaviour
     }
     private void DisplayScore(ScoreResponse response)
     {
-        promptQualityText.text =
-            response.score.promptQuality + "/20";
+        promptQualityText.text = response.score.promptQuality + "/20";
 
-        posterMessageText.text =
-            response.score.posterMessage + "/20";
+        posterMessageText.text = response.score.posterMessage + "/20";
 
-        designOutputText.text =
-            response.score.designQuality + "/20";
+        designOutputText.text = response.score.designQuality + "/20";
 
-        accessibilityText.text =
-            response.score.accessibilityUnderstanding + "/20";
+        accessibilityText.text = response.score.accessibilityUnderstanding + "/20";
 
-        revisionText.text =
-            response.score.revisionProcess + "/10";
+        int finalSubmissionScore = response.score.revisionProcess + response.score.finalExplanation;
 
-        finalExplanationScoreText.text =
-            response.score.finalExplanation + "/10";
+        finalExplanationScoreText.text = finalSubmissionScore + "/20";
 
-        totalScoreText.text =
-            response.score.total + "/100";
+        totalScoreText.text = response.score.total + "/100";
 
-        feedbackText.text =
-            response.score.feedback;
+        feedbackText.text = response.score.feedback;
 
-        suggestionText.text =
-            response.score.improvementSuggestion;
+        suggestionText.text = response.score.improvementSuggestion;
 
         ParticipantManager.Instance.CurrentParticipant.isCompleted = true;
 
@@ -945,7 +939,7 @@ public class FullPosterImageAPI : MonoBehaviour
 
         ParticipantManager.Instance.CurrentParticipant.revisionProcessScore = response.score.revisionProcess;
 
-        ParticipantManager.Instance.CurrentParticipant.finalExplanationScore = response.score.finalExplanation;
+        ParticipantManager.Instance.CurrentParticipant.finalExplanationScore = response.score.revisionProcess + response.score.finalExplanation;
 
         ParticipantManager.Instance.CurrentParticipant.feedback = response.score.feedback;
 
@@ -980,13 +974,9 @@ public class FullPosterImageAPI : MonoBehaviour
          + response.score.accessibilityUnderstanding
          + " out of twenty. "
 
-         + "Revision process: "
-         + response.score.revisionProcess
-         + " out of ten. "
-
-         + "Final explanation: "
-         + response.score.finalExplanation
-         + " out of ten. "
+         + "Final design justification: "
+         + finalSubmissionScore
+         + " out of twenty. "
 
          + "Feedback: "
          + response.score.feedback
@@ -1240,8 +1230,7 @@ public class FullPosterImageAPI : MonoBehaviour
         posterMessageText.text = data.posterMessage + "/20";
         designOutputText.text = data.designQuality + "/20";
         accessibilityText.text = data.accessibilityUnderstanding + "/20";
-        revisionText.text = data.revisionProcessScore + "/10";
-        finalExplanationScoreText.text = data.finalExplanationScore + "/10";
+        finalExplanationScoreText.text = data.finalExplanationScore + "/20";
         totalScoreText.text = data.score + "/100";
 
         feedbackText.text = data.feedback;
@@ -1295,8 +1284,7 @@ public class FullPosterImageAPI : MonoBehaviour
         isProcessing = false;
         isRevisionMode = false;
         isDescriptionReady = false;
-        hasGeneratedRevision = false;
-        revisionNextButton.interactable = false;
+
 
         currentRevisionCount = 0;
 
@@ -1318,7 +1306,6 @@ public class FullPosterImageAPI : MonoBehaviour
         posterMessageText.text = "";
         designOutputText.text = "";
         accessibilityText.text = "";
-        revisionText.text = "";
         finalExplanationScoreText.text = "";
         totalScoreText.text = "";
         feedbackText.text = "";
@@ -1352,7 +1339,7 @@ public class FullPosterImageAPI : MonoBehaviour
 
         outputNextButton.interactable = true;
 
-        revisionNextButton.interactable = false;
+
 
         finalExplanationNextButton.interactable = false;
 
@@ -1388,7 +1375,6 @@ public class FullPosterImageAPI : MonoBehaviour
         posterMessageText.text = "";
         designOutputText.text = "";
         accessibilityText.text = "";
-        revisionText.text = "";
         finalExplanationScoreText.text = "";
         totalScoreText.text = "";
 
@@ -1410,8 +1396,6 @@ public class FullPosterImageAPI : MonoBehaviour
 
         outputNextButton.interactable = true;
 
-        hasGeneratedRevision = false;
-        revisionNextButton.interactable = false;
 
         finalExplanationNextButton.interactable = false;
 
