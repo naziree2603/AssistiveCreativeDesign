@@ -423,6 +423,7 @@ GameObject:
   - component: {fileID: 5358624237957080947}
   - component: {fileID: 7194290121515950651}
   - component: {fileID: 519903077777375218}
+  - component: {fileID: 3579888873781812984}
   m_Layer: 5
   m_Name: ParticipantRankCard
   m_TagString: Untagged
@@ -518,6 +519,23 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!114 &3579888873781812984
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5178201539197419509}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3898fe84578b8cb4eaa3ed5948956995, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParticipantRankCard
+  rankText: {fileID: 4598983351391685280}
+  participantNameText: {fileID: 8087428784403018209}
+  institutionText: {fileID: 3278574822907012429}
+  scoreText: {fileID: 1291967170904094181}
+  categoryText: {fileID: 5858494708603309110}
 --- !u!1 &7315554866460600917
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,1535 +1,1535 @@
-using System;
-using System.Collections;
-using System.IO;
-using System.Security.Policy;
-using System.Text;
-using System.Threading.Tasks;
-using TMPro;
-using UnityEngine;
-using UnityEngine.Networking;
-using UnityEngine.UI;
-using static AccessibilityToggle;
-
-public class FullPosterImageAPI : MonoBehaviour
-{
-    
-
-    [Header("Backend")]
-    [SerializeField] private string backendUrl = "https://assistive-design-backend-506363853940.asia-southeast1.run.app";
-
-    [Header("Participant Details")]
-    [SerializeField] TMP_InputField participantNameInput;
-    [SerializeField] TMP_InputField institutionInput;
-    [SerializeField] TMP_Dropdown categoryTypeDropdown;
-    [SerializeField] TMP_Dropdown subCategoryDropdown;
-
-
-    [Header("UI")]
-    [SerializeField] private TMP_InputField promptInput;
-    [SerializeField] private TMP_Text statusText;
-    [SerializeField] private RawImage posterRawImage;
-    public string latestImageUrl;
-    public string latestPromptUsed;
-    public string latestStoragePath;
-
-    [Header("Description UI")]
-    [SerializeField] private TMP_Text detailsText;
-    [SerializeField] private Button replayButton;
-    [SerializeField] private RawImage descriptionRawImage;
-
-    private string lastDescription = "";
-
-    private string revisionHistory = "";
-
-    [Header("Revision UI")]
-    [SerializeField] private TMP_InputField revisionPromptInput;
-    [SerializeField] private RawImage revisionPosterRawImage;
-    private bool isRevisionMode = false;
-
-
-
-    [Header("Revision Settings")]
-    [SerializeField] private int maxRevisionCount = 3;
+//using System;
+//using System.Collections;
+//using System.IO;
+//using System.Security.Policy;
+//using System.Text;
+//using System.Threading.Tasks;
+//using TMPro;
+//using UnityEngine;
+//using UnityEngine.Networking;
+//using UnityEngine.UI;
+//using static AccessibilityToggle;
+
+//public class FullPosterImageAPI : MonoBehaviour
+//{
+
+
+//    [Header("Backend")]
+//    [SerializeField] private string backendUrl = "https://assistive-design-backend-506363853940.asia-southeast1.run.app";
+
+//    [Header("Participant Details")]
+//    [SerializeField] TMP_InputField participantNameInput;
+//    [SerializeField] TMP_InputField institutionInput;
+//    [SerializeField] TMP_Dropdown categoryTypeDropdown;
+//    [SerializeField] TMP_Dropdown subCategoryDropdown;
+
+
+//    [Header("UI")]
+//    [SerializeField] private TMP_InputField promptInput;
+//    [SerializeField] private TMP_Text statusText;
+//    [SerializeField] private RawImage posterRawImage;
+//    public string latestImageUrl;
+//    public string latestPromptUsed;
+//    public string latestStoragePath;
 
-    private int currentRevisionCount = 0;
+//    [Header("Description UI")]
+//    [SerializeField] private TMP_Text detailsText;
+//    [SerializeField] private Button replayButton;
+//    [SerializeField] private RawImage descriptionRawImage;
 
-    [Header("Score UI")]
-    [SerializeField] private TMP_InputField finalExplanationInput;
-    [SerializeField] private TMP_Text promptQualityText;
-    [SerializeField] private TMP_Text posterMessageText;
-    [SerializeField] private TMP_Text designOutputText;
-    [SerializeField] private TMP_Text accessibilityText;
-    [SerializeField] private TMP_Text finalExplanationScoreText;
-    [SerializeField] private TMP_Text totalScoreText;
-    [SerializeField] private TMP_Text feedbackText;
-    [SerializeField] private TMP_Text suggestionText;
-    private string scoreSpeechText = "";
+//    private string lastDescription = "";
 
-    [Header("Loading Status")]
-    [SerializeField] private GameObject loadingPanel;
-    [SerializeField] private TMP_Text loadingMessage;
+//    private string revisionHistory = "";
 
-    private Coroutine loadingVoiceCoroutine;
+//    [Header("Revision UI")]
+//    [SerializeField] private TMP_InputField revisionPromptInput;
+//    [SerializeField] private RawImage revisionPosterRawImage;
+//    private bool isRevisionMode = false;
 
-    private bool isProcessing = false;
 
-    private bool isDescriptionReady = false;
-    
 
-    [Header("Panel Page")]
-    public GameObject loginPanel;
-    public GameObject registerPanel; 
-    public GameObject mainMenuPanel;
-    public GameObject instructionPanel;
-    public GameObject challengePanel;
-    public GameObject participantDetailsPanel;
-    public GameObject promptPanel;
-    public GameObject outputPanel;
-    public GameObject descriptionPanel;
-    public GameObject revisionPanel;
-    public GameObject finalExplanationPanel;
-    public GameObject scorePanel;
-    public GameObject leaderboardPanel;
-    public GameObject submittedPanel;
+//    [Header("Revision Settings")]
+//    [SerializeField] private int maxRevisionCount = 3;
 
+//    private int currentRevisionCount = 0;
 
-    [Header("Review Page")]
-    [SerializeField] public GameObject scorePosterReviewPanel;
-    [SerializeField] private RawImage scoreReviewRawImage;
-    [SerializeField] public GameObject revisionPosterReviewPanel;
-    [SerializeField] private RawImage revisionReviewRawImage;
-    [SerializeField] private GameObject originalPreviewPanel;
-    [SerializeField] private RawImage originalPreviewRawImage;
+//    [Header("Score UI")]
+//    [SerializeField] private TMP_InputField finalExplanationInput;
+//    [SerializeField] private TMP_Text promptQualityText;
+//    [SerializeField] private TMP_Text posterMessageText;
+//    [SerializeField] private TMP_Text designOutputText;
+//    [SerializeField] private TMP_Text accessibilityText;
+//    [SerializeField] private TMP_Text finalExplanationScoreText;
+//    [SerializeField] private TMP_Text totalScoreText;
+//    [SerializeField] private TMP_Text feedbackText;
+//    [SerializeField] private TMP_Text suggestionText;
+//    private string scoreSpeechText = "";
 
-    [Header("Action Buttons")]
-    [SerializeField] private Button outputNextButton;
-    [SerializeField] private Button finalExplanationNextButton;
-    [SerializeField] private GameObject generatePosterButton;
-    [SerializeField] private GameObject generateRevisionButton;
-    [SerializeField] private GameObject calculateScoreButton;
-    [SerializeField] private GameObject sample1;
-    [SerializeField] private GameObject sample2;
-    [SerializeField] private GameObject sample3;
+//    [Header("Loading Status")]
+//    [SerializeField] private GameObject loadingPanel;
+//    [SerializeField] private TMP_Text loadingMessage;
 
-    public enum PosterReviewSource
-    {
-        Revision,
-        Score
-    }
+//    private Coroutine loadingVoiceCoroutine;
 
-    private PosterReviewSource reviewSource;
+//    private bool isProcessing = false;
 
-    //Generate Poster Image
+//    private bool isDescriptionReady = false;
 
-    public async void StartParticipant()
-    {
 
+//    [Header("Panel Page")]
+//    public GameObject loginPanel;
+//    public GameObject registerPanel;
+//    public GameObject mainMenuPanel;
+//    public GameObject instructionPanel;
+//    public GameObject challengePanel;
+//    public GameObject participantDetailsPanel;
+//    public GameObject promptPanel;
+//    public GameObject outputPanel;
+//    public GameObject descriptionPanel;
+//    public GameObject revisionPanel;
+//    public GameObject finalExplanationPanel;
+//    public GameObject scorePanel;
+//    public GameObject leaderboardPanel;
+//    public GameObject submittedPanel;
 
-        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
 
-        AccountData account = FirestoreAccountManager.Instance.CurrentAccount;
+//    [Header("Review Page")]
+//    [SerializeField] public GameObject scorePosterReviewPanel;
+//    [SerializeField] private RawImage scoreReviewRawImage;
+//    [SerializeField] public GameObject revisionPosterReviewPanel;
+//    [SerializeField] private RawImage revisionReviewRawImage;
+//    [SerializeField] private GameObject originalPreviewPanel;
+//    [SerializeField] private RawImage originalPreviewRawImage;
 
+//    [Header("Action Buttons")]
+//    [SerializeField] private Button outputNextButton;
+//    [SerializeField] private Button finalExplanationNextButton;
+//    [SerializeField] private GameObject generatePosterButton;
+//    [SerializeField] private GameObject generateRevisionButton;
+//    [SerializeField] private GameObject calculateScoreButton;
+//    [SerializeField] private GameObject sample1;
+//    [SerializeField] private GameObject sample2;
+//    [SerializeField] private GameObject sample3;
 
+//    public enum PosterReviewSource
+//    {
+//        Revision,
+//        Score
+//    }
 
+//    private PosterReviewSource reviewSource;
 
-        data.participantName = participantNameInput.text;
-        data.institution = institutionInput.text;
-        data.categoryType = categoryTypeDropdown.options[categoryTypeDropdown.value].text;
-        data.subCategory = subCategoryDropdown.options[subCategoryDropdown.value].text;
+//    //Generate Poster Image
 
-        ParticipantData participant = ParticipantManager.Instance.CurrentParticipant;
+//    public async void StartParticipant()
+//    {
 
-        participant.challengeID = ChallengeManager.Instance.CurrentChallenge.challengeID;
-        participant.challengeTitle = ChallengeManager.Instance.CurrentChallenge.title;
 
-        if (ChallengeManager.Instance.CurrentChallenge == null)
-        {
-            statusText.text =
-                "Please select a challenge.";
+//        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
 
-            return;
-        }
+//        AccountData account = FirestoreAccountManager.Instance.CurrentAccount;
 
-        await ParticipantManager.Instance.Save();
 
 
-    }
 
-    public void GenerateFullPosterImage()
-    {
-        if (isProcessing)
-        {
-            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Please wait. Generation is still in progress.");
-            return;
-        }
+//        data.participantName = participantNameInput.text;
+//        data.institution = institutionInput.text;
+//        data.categoryType = categoryTypeDropdown.options[categoryTypeDropdown.value].text;
+//        data.subCategory = subCategoryDropdown.options[subCategoryDropdown.value].text;
 
-        string prompt = promptInput.text.Trim();
+//        ParticipantData participant = ParticipantManager.Instance.CurrentParticipant;
 
-        if (string.IsNullOrEmpty(prompt))
-        {
-            statusText.text = "Please enter a poster prompt.";
-            return;
-        }
+//        participant.challengeID = ChallengeManager.Instance.CurrentChallenge.challengeID;
+//        participant.challengeTitle = ChallengeManager.Instance.CurrentChallenge.title;
 
-        isProcessing = true;
+//        if (ChallengeManager.Instance.CurrentChallenge == null)
+//        {
+//            statusText.text =
+//                "Please select a challenge.";
 
-        isRevisionMode = false;
+//            return;
+//        }
 
-        StartCoroutine(PostGeneratePosterImage(prompt));
-    }
+//        await ParticipantManager.Instance.Save();
 
-    private IEnumerator PostGeneratePosterImage(string userPrompt)
-    {
-        string url = backendUrl + "/generate-full-poster-image";
-        PosterImageRequest requestData = new PosterImageRequest
-        {
-            userPrompt = userPrompt
-        };
 
-        string jsonBody = JsonUtility.ToJson(requestData);
-        using UnityWebRequest request = new UnityWebRequest(url, "POST");
-        byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
+//    }
 
-        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-        request.downloadHandler = new DownloadHandlerBuffer();
-        request.SetRequestHeader("Content-Type", "application/json");
+//    public void GenerateFullPosterImage()
+//    {
+//        if (isProcessing)
+//        {
+//            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Please wait. Generation is still in progress.");
+//            return;
+//        }
 
-        ShowLoading(
-            "Generating your poster. Please wait."
-        );
+//        string prompt = promptInput.text.Trim();
 
-        yield return request.SendWebRequest();
-        if (request.result != UnityWebRequest.Result.Success)
-        {
-            HideLoading();
+//        if (string.IsNullOrEmpty(prompt))
+//        {
+//            statusText.text = "Please enter a poster prompt.";
+//            return;
+//        }
 
-            isProcessing = false;
+//        isProcessing = true;
 
-            statusText.text =
-                "API Error: " + request.error;
+//        isRevisionMode = false;
 
-            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-                "Poster generation failed."
-            );
+//        StartCoroutine(PostGeneratePosterImage(prompt));
+//    }
 
-            yield break;
-        }
-        FullPosterImageResponse response
-            = JsonUtility.FromJson<FullPosterImageResponse>(request.downloadHandler.text);
+//    private IEnumerator PostGeneratePosterImage(string userPrompt)
+//    {
+//        string url = backendUrl + "/generate-full-poster-image";
+//        PosterImageRequest requestData = new PosterImageRequest
+//        {
+//            userPrompt = userPrompt
+//        };
 
-        if (!response.success || string.IsNullOrEmpty(response.imageUrl))
-        {
-            HideLoading();
+//        string jsonBody = JsonUtility.ToJson(requestData);
+//        using UnityWebRequest request = new UnityWebRequest(url, "POST");
+//        byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
 
-            statusText.text =
-                "No poster image returned.";
+//        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+//        request.downloadHandler = new DownloadHandlerBuffer();
+//        request.SetRequestHeader("Content-Type", "application/json");
 
-            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-                "No poster image returned."
-            );
+//        ShowLoading(
+//            "Generating your poster. Please wait."
+//        );
 
-            yield break;
-        }
+//        yield return request.SendWebRequest();
+//        if (request.result != UnityWebRequest.Result.Success)
+//        {
+//            HideLoading();
 
-        latestImageUrl = response.imageUrl;
-        latestPromptUsed = response.promptUsed;
-        latestStoragePath = response.storagePath;
+//            isProcessing = false;
 
-        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
+//            statusText.text =
+//                "API Error: " + request.error;
 
-        data.prompt = promptInput.text;
-        data.promptUsed = latestPromptUsed;
-        data.storagePath = latestStoragePath;
-        data.lastPage = "Output";
+//            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//                "Poster generation failed."
+//            );
 
-        ParticipantManager.Instance.Save();
+//            yield break;
+//        }
+//        FullPosterImageResponse response
+//            = JsonUtility.FromJson<FullPosterImageResponse>(request.downloadHandler.text);
 
+//        if (!response.success || string.IsNullOrEmpty(response.imageUrl))
+//        {
+//            HideLoading();
 
-        yield return StartCoroutine(DownloadImage(response.imageUrl));
-    }
+//            statusText.text =
+//                "No poster image returned.";
 
-    private Texture2D originalPosterTexture;
-    private Texture2D revisedPosterTexture;
+//            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//                "No poster image returned."
+//            );
 
+//            yield break;
+//        }
 
+//        latestImageUrl = response.imageUrl;
+//        latestPromptUsed = response.promptUsed;
+//        latestStoragePath = response.storagePath;
 
-    private IEnumerator DownloadImage(string imageUrl, bool isRevision = false, bool isLoadingSavedData = false)
-    {
-        statusText.text = "Downloading poster image...";
+//        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
 
-        using UnityWebRequest request = UnityWebRequestTexture.GetTexture(imageUrl);
-        yield return request.SendWebRequest();
+//        data.prompt = promptInput.text;
+//        data.promptUsed = latestPromptUsed;
+//        data.storagePath = latestStoragePath;
+//        data.lastPage = "Output";
 
-        if (request.result != UnityWebRequest.Result.Success)
-        {
-            isProcessing = false;
+//        ParticipantManager.Instance.Save();
 
-            statusText.text = "Image download error: " + request.error;
-            yield break;
-        }
 
-        Texture2D texture = DownloadHandlerTexture.GetContent(request);
+//        yield return StartCoroutine(DownloadImage(response.imageUrl));
+//    }
 
-        // Upload only when generating a new poster
-        if (!isLoadingSavedData)
-        {
-            var uploadTask =
-                FirebaseStorageManager.Instance.UploadParticipantImage(
-                    texture,
-                    isRevision);
+//    private Texture2D originalPosterTexture;
+//    private Texture2D revisedPosterTexture;
 
-            yield return new WaitUntil(() => uploadTask.IsCompleted);
-        }
 
 
-        if (!isRevision)
-        {
-            // Original Poster
+//    private IEnumerator DownloadImage(string imageUrl, bool isRevision = false, bool isLoadingSavedData = false)
+//    {
+//        statusText.text = "Downloading poster image...";
 
-            posterRawImage.texture = texture;
+//        using UnityWebRequest request = UnityWebRequestTexture.GetTexture(imageUrl);
+//        yield return request.SendWebRequest();
 
-            originalPosterTexture = texture;
+//        if (request.result != UnityWebRequest.Result.Success)
+//        {
+//            isProcessing = false;
 
+//            statusText.text = "Image download error: " + request.error;
+//            yield break;
+//        }
 
-            if (descriptionRawImage != null)
-            {
-                descriptionRawImage.texture = texture;
-            }
-        }
-        else
-        {
-            if (revisionPosterRawImage != null)
-            {
-                revisionPosterRawImage.texture = texture;
-                revisedPosterTexture = texture;
-            }
+//        Texture2D texture = DownloadHandlerTexture.GetContent(request);
 
+//        // Upload only when generating a new poster
+//        if (!isLoadingSavedData)
+//        {
+//            var uploadTask =
+//                FirebaseStorageManager.Instance.UploadParticipantImage(
+//                    texture,
+//                    isRevision);
 
-        }
+//            yield return new WaitUntil(() => uploadTask.IsCompleted);
+//        }
 
-        posterRawImage.SetNativeSize();
 
-        HideLoading();
+//        if (!isRevision)
+//        {
+//            // Original Poster
 
-        isProcessing = false;
+//            posterRawImage.texture = texture;
 
-        if (!isLoadingSavedData)
-        {
-            if (!isRevision)
-            {
-                AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-                    "Poster generated successfully. Opening poster description page."
-                );
-            }
-            else
-            {
-                AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-                    "Revised poster generated successfully."
-                );
-            }
-        }
+//            originalPosterTexture = texture;
 
-        if (!isLoadingSavedData)
-        {
-            isDescriptionReady = false;
 
-            outputNextButton.interactable = false;
+//            if (descriptionRawImage != null)
+//            {
+//                descriptionRawImage.texture = texture;
+//            }
+//        }
+//        else
+//        {
+//            if (revisionPosterRawImage != null)
+//            {
+//                revisionPosterRawImage.texture = texture;
+//                revisedPosterTexture = texture;
+//            }
 
-            StartCoroutine(DescribeGeneratedImage());
 
-            if (!isRevision)
-            {
-                promptPanel.SetActive(false);
-                outputPanel.SetActive(true); 
-            }
-        }
+//        }
 
-    }
+//        posterRawImage.SetNativeSize();
 
- 
+//        HideLoading();
 
-   
+//        isProcessing = false;
 
-    private Texture2D LoadTexture(string path)
-    {
-        if (!System.IO.File.Exists(path))
-            return null;
+//        if (!isLoadingSavedData)
+//        {
+//            if (!isRevision)
+//            {
+//                AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//                    "Poster generated successfully. Opening poster description page."
+//                );
+//            }
+//            else
+//            {
+//                AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//                    "Revised poster generated successfully."
+//                );
+//            }
+//        }
 
-        byte[] bytes = System.IO.File.ReadAllBytes(path);
+//        if (!isLoadingSavedData)
+//        {
+//            isDescriptionReady = false;
 
-        Texture2D tex = new Texture2D(2, 2);
+//            outputNextButton.interactable = false;
 
-        tex.LoadImage(bytes);
+//            StartCoroutine(DescribeGeneratedImage());
 
-        return tex;
-    }
+//            if (!isRevision)
+//            {
+//                promptPanel.SetActive(false);
+//                outputPanel.SetActive(true);
+//            }
+//        }
 
-    private void LoadOriginalPoster(string path)
-    {
-        Texture2D tex = LoadTexture(path);
+//    }
 
-        if (tex == null)
-            return;
 
-        originalPosterTexture = tex;
 
-        posterRawImage.texture = tex;
 
-        descriptionRawImage.texture = tex;
 
+//    private Texture2D LoadTexture(string path)
+//    {
+//        if (!System.IO.File.Exists(path))
+//            return null;
 
-    }
+//        byte[] bytes = System.IO.File.ReadAllBytes(path);
 
-    private void LoadRevisedPoster(string path)
-    {
-        Texture2D tex = LoadTexture(path);
+//        Texture2D tex = new Texture2D(2, 2);
 
-        if (tex == null)
-            return;
+//        tex.LoadImage(bytes);
 
-        revisedPosterTexture = tex;
+//        return tex;
+//    }
 
-        revisionPosterRawImage.texture = tex;
+//    private void LoadOriginalPoster(string path)
+//    {
+//        Texture2D tex = LoadTexture(path);
 
-        scoreReviewRawImage.texture = tex;
-    }
+//        if (tex == null)
+//            return;
 
-    private IEnumerator DescribeGeneratedImage()
-    {
+//        originalPosterTexture = tex;
 
-        string url =
-            backendUrl + "/describe-generated-image";
+//        posterRawImage.texture = tex;
 
-        DescribeImageRequest requestData =
-            new DescribeImageRequest();
+//        descriptionRawImage.texture = tex;
 
-        requestData.imageUrl =
-            latestImageUrl;
 
-        string jsonBody =
-            JsonUtility.ToJson(requestData);
+//    }
 
-        using UnityWebRequest request =
-            new UnityWebRequest(url, "POST");
+//    private void LoadRevisedPoster(string path)
+//    {
+//        Texture2D tex = LoadTexture(path);
 
-        byte[] bodyRaw =
-            Encoding.UTF8.GetBytes(jsonBody);
+//        if (tex == null)
+//            return;
 
-        request.uploadHandler =
-            new UploadHandlerRaw(bodyRaw);
+//        revisedPosterTexture = tex;
 
-        request.downloadHandler =
-            new DownloadHandlerBuffer();
+//        revisionPosterRawImage.texture = tex;
 
-        request.SetRequestHeader(
-            "Content-Type",
-            "application/json");
+//        scoreReviewRawImage.texture = tex;
+//    }
 
-        yield return request.SendWebRequest();
+//    private IEnumerator DescribeGeneratedImage()
+//    {
 
-        if (request.result != UnityWebRequest.Result.Success)
-        {
-            HideLoading();
+//        string url =
+//            backendUrl + "/describe-generated-image";
 
-            statusText.text = "Describe API Error";
+//        DescribeImageRequest requestData =
+//            new DescribeImageRequest();
 
-            isDescriptionReady = true;
+//        requestData.imageUrl =
+//            latestImageUrl;
 
-            outputPanel.SetActive(true);
+//        string jsonBody =
+//            JsonUtility.ToJson(requestData);
 
-            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-                "Unable to analyze the poster."
-            );
+//        using UnityWebRequest request =
+//            new UnityWebRequest(url, "POST");
 
-            yield break;
-        }
+//        byte[] bodyRaw =
+//            Encoding.UTF8.GetBytes(jsonBody);
 
-        DescribeImageResponse response =
-            JsonUtility.FromJson<DescribeImageResponse>(
-                request.downloadHandler.text);
+//        request.uploadHandler =
+//            new UploadHandlerRaw(bodyRaw);
 
-        if (!response.success)
-            yield break;
+//        request.downloadHandler =
+//            new DownloadHandlerBuffer();
 
-        lastDescription =
-            response.description.detailedDescription;
+//        request.SetRequestHeader(
+//            "Content-Type",
+//            "application/json");
 
-        if (isRevisionMode)
-        {
-            revisionHistory +=
-                "\n\nRevision " + currentRevisionCount +
-                "\nRequest: " + revisionPromptInput.text +
-                "\nResult: " + lastDescription;
-        }
+//        yield return request.SendWebRequest();
 
-        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
+//        if (request.result != UnityWebRequest.Result.Success)
+//        {
+//            HideLoading();
 
-        data.posterDescription = lastDescription;
-        data.lastPage = "Description";
+//            statusText.text = "Describe API Error";
 
-        ParticipantManager.Instance.Save();
+//            isDescriptionReady = true;
 
-        detailsText.text =
-            lastDescription;
+//            outputPanel.SetActive(true);
 
-       
+//            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//                "Unable to analyze the poster."
+//            );
 
-        if (!isRevisionMode)
-        {
+//            yield break;
+//        }
 
-        }
+//        DescribeImageResponse response =
+//            JsonUtility.FromJson<DescribeImageResponse>(
+//                request.downloadHandler.text);
 
-        // Only auto-read if Accessibility is ON
-        if (UAP_AccessibilityManager.IsEnabled())
-        {
-            ReadDescription();
-        }
+//        if (!response.success)
+//            yield break;
 
-        isDescriptionReady = true;
+//        lastDescription =
+//            response.description.detailedDescription;
 
-        HideLoading();
+//        if (isRevisionMode)
+//        {
+//            revisionHistory +=
+//                "\n\nRevision " + currentRevisionCount +
+//                "\nRequest: " + revisionPromptInput.text +
+//                "\nResult: " + lastDescription;
+//        }
 
-        outputNextButton.interactable = true;
+//        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
 
-        // Open Description automatically
-        CloseAllPanels();
+//        data.posterDescription = lastDescription;
+//        data.lastPage = "Description";
 
-        if (isRevisionMode)
-        {
-            revisionPanel.SetActive(true);
-        }
-        else
-        {
-            descriptionPanel.SetActive(true);
-        }
+//        ParticipantManager.Instance.Save();
 
-        // Revision flow is finished
-        isRevisionMode = false;
+//        detailsText.text =
+//            lastDescription;
 
-        // Read only after panel is visible
-        if (UAP_AccessibilityManager.IsEnabled())
-        {
-            ReadDescription();
-        }
-    }
 
-    public void OpenDescription()
-    {
-        // History mode
-        if (ParticipantManager.Instance.CurrentParticipant != null &&
-            ParticipantManager.Instance.CurrentParticipant.isCompleted)
-        {
-            CloseAllPanels();
-            descriptionPanel.SetActive(true);
-            return;
-        }
 
-        if (!isDescriptionReady)
-        {
-            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Please wait. Description is still loading.");
-            return;
-        }
+//        if (!isRevisionMode)
+//        {
 
-        CloseAllPanels();
-        descriptionPanel.SetActive(true);
-    }
+//        }
 
-    public void ReplayDescription()
-    {
-        if (!AccessibilityToggle.AccessibilityEnabled)
-            return;
+//        // Only auto-read if Accessibility is ON
+//        if (UAP_AccessibilityManager.IsEnabled())
+//        {
+//            ReadDescription();
+//        }
 
-        ReadDescription();
-    }
+//        isDescriptionReady = true;
 
-    private void ReadDescription()
-    {
-        if (string.IsNullOrEmpty(lastDescription))
-            return;
+//        HideLoading();
 
-        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-        lastDescription
-        );
-    }
+//        outputNextButton.interactable = true;
 
+//        // Open Description automatically
+//        CloseAllPanels();
 
+//        if (isRevisionMode)
+//        {
+//            revisionPanel.SetActive(true);
+//        }
+//        else
+//        {
+//            descriptionPanel.SetActive(true);
+//        }
 
+//        // Revision flow is finished
+//        isRevisionMode = false;
 
-    public void OpenOriginalPoster()
-    {
-        revisionPanel.SetActive(false);
+//        // Read only after panel is visible
+//        if (UAP_AccessibilityManager.IsEnabled())
+//        {
+//            ReadDescription();
+//        }
+//    }
 
-        originalPreviewPanel.SetActive(true);
+//    public void OpenDescription()
+//    {
+//        // History mode
+//        if (ParticipantManager.Instance.CurrentParticipant != null &&
+//            ParticipantManager.Instance.CurrentParticipant.isCompleted)
+//        {
+//            CloseAllPanels();
+//            descriptionPanel.SetActive(true);
+//            return;
+//        }
 
-        originalPreviewRawImage.texture =
-            originalPosterTexture;
+//        if (!isDescriptionReady)
+//        {
+//            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Please wait. Description is still loading.");
+//            return;
+//        }
 
-        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-            "Opening original poster preview."
-        );
-    }
+//        CloseAllPanels();
+//        descriptionPanel.SetActive(true);
+//    }
 
-    public void BackToRevision()
-    {
-        originalPreviewPanel.SetActive(false);
+//    public void ReplayDescription()
+//    {
+//        if (!AccessibilityToggle.AccessibilityEnabled)
+//            return;
 
-        revisionPanel.SetActive(true);
+//        ReadDescription();
+//    }
 
-        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-            "Returning to revision page."
-        );
-    }
+//    private void ReadDescription()
+//    {
+//        if (string.IsNullOrEmpty(lastDescription))
+//            return;
 
-    public void GenerateRevisionPoster()
-    {
-        if (string.IsNullOrWhiteSpace(revisionPromptInput.text))
-        {
-            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-                "Please enter a revision prompt."
-            );
+//        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//        lastDescription
+//        );
+//    }
 
-            return;
-        }
 
 
-        if (currentRevisionCount >= maxRevisionCount)
-        {
-            ShowLoading(
-                "Maximum revision limit reached. Opening final explanation page."
-            );
 
-            StartCoroutine(OpenFinalExplanationAfterDelay());
+//    public void OpenOriginalPoster()
+//    {
+//        revisionPanel.SetActive(false);
 
-            return;
-        }
+//        originalPreviewPanel.SetActive(true);
 
-        if (string.IsNullOrEmpty(revisionPromptInput.text))
-        {
-            statusText.text =
-                "Please enter revision prompt.";
+//        originalPreviewRawImage.texture =
+//            originalPosterTexture;
 
-            return;
-        }
+//        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//            "Opening original poster preview."
+//        );
+//    }
 
-         revisionHistory += "\nRevision " + (currentRevisionCount + 1) + ": " + revisionPromptInput.text;
+//    public void BackToRevision()
+//    {
+//        originalPreviewPanel.SetActive(false);
 
-        string finalRevisionPrompt =
-            BuildRevisionPrompt();
+//        revisionPanel.SetActive(true);
 
-        isRevisionMode = true;
+//        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//            "Returning to revision page."
+//        );
+//    }
 
-        StartCoroutine(
-            GenerateRevisionImage(
-                finalRevisionPrompt
-            ));
-    }
+//    public void GenerateRevisionPoster()
+//    {
+//        if (string.IsNullOrWhiteSpace(revisionPromptInput.text))
+//        {
+//            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//                "Please enter a revision prompt."
+//            );
 
-    private IEnumerator OpenFinalExplanationAfterDelay()
-    {
-        yield return new WaitForSeconds(6f);
+//            return;
+//        }
 
-        HideLoading();
 
-        revisionPanel.SetActive(false);
+//        if (currentRevisionCount >= maxRevisionCount)
+//        {
+//            ShowLoading(
+//                "Maximum revision limit reached. Opening final explanation page."
+//            );
 
-        finalExplanationPanel.SetActive(true);
+//            StartCoroutine(OpenFinalExplanationAfterDelay());
 
-        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-            "Maximum revisions reached. Please provide your final explanation."
-        );
-    }
-    private string BuildRevisionPrompt()
-    {
-        return
-            "Original Prompt:\n"
-            + promptInput.text
+//            return;
+//        }
 
-            + "\n\nCurrent Poster Description:\n"
-            + lastDescription
+//        if (string.IsNullOrEmpty(revisionPromptInput.text))
+//        {
+//            statusText.text =
+//                "Please enter revision prompt.";
 
-            + "\n\nAccepted Revision History:\n"
-            + revisionHistory
+//            return;
+//        }
 
-            + "\n\nLatest Revision Request:\n"
-            + revisionPromptInput.text
+//        revisionHistory += "\nRevision " + (currentRevisionCount + 1) + ": " + revisionPromptInput.text;
 
-            + "\n\nIMPORTANT RULES:\n"
-            + "- Preserve all previously accepted changes.\n"
-            + "- Do not remove existing objects.\n"
-            + "- Only apply the newest requested modification.\n"
-            + "- Keep the same poster purpose and accessibility design.\n"
-            + "- Generate a new improved version.";
-    }
+//        string finalRevisionPrompt =
+//            BuildRevisionPrompt();
 
+//        isRevisionMode = true;
 
-    private IEnumerator GenerateRevisionImage(  string revisionPrompt)
-    {
-        string url =
-            backendUrl +
-            "/generate-full-poster-image";
+//        StartCoroutine(
+//            GenerateRevisionImage(
+//                finalRevisionPrompt
+//            ));
+//    }
 
-        PosterImageRequest requestData =
-            new PosterImageRequest
-            {
-                userPrompt =
-                    revisionPrompt
-            };
+//    private IEnumerator OpenFinalExplanationAfterDelay()
+//    {
+//        yield return new WaitForSeconds(6f);
 
-        string jsonBody =
-            JsonUtility.ToJson(
-                requestData);
+//        HideLoading();
 
-        using UnityWebRequest request =
-            new UnityWebRequest(
-                url,
-                "POST");
+//        revisionPanel.SetActive(false);
 
-        byte[] bodyRaw =
-            Encoding.UTF8.GetBytes(
-                jsonBody);
+//        finalExplanationPanel.SetActive(true);
 
-        request.uploadHandler =
-            new UploadHandlerRaw(
-                bodyRaw);
+//        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//            "Maximum revisions reached. Please provide your final explanation."
+//        );
+//    }
+//    private string BuildRevisionPrompt()
+//    {
+//        return
+//            "Original Prompt:\n"
+//            + promptInput.text
 
-        request.downloadHandler =
-            new DownloadHandlerBuffer();
+//            + "\n\nCurrent Poster Description:\n"
+//            + lastDescription
 
-        request.SetRequestHeader(
-            "Content-Type",
-            "application/json");
+//            + "\n\nAccepted Revision History:\n"
+//            + revisionHistory
 
-        ShowLoading(
-            "Applying your poster revisions. Please wait."
-        );
+//            + "\n\nLatest Revision Request:\n"
+//            + revisionPromptInput.text
 
-        yield return request.SendWebRequest();
+//            + "\n\nIMPORTANT RULES:\n"
+//            + "- Preserve all previously accepted changes.\n"
+//            + "- Do not remove existing objects.\n"
+//            + "- Only apply the newest requested modification.\n"
+//            + "- Keep the same poster purpose and accessibility design.\n"
+//            + "- Generate a new improved version.";
+//    }
 
-        if (request.result !=
-            UnityWebRequest.Result.Success)
-        {
-            HideLoading(); // Hide popup if error
 
-            statusText.text =
-                request.error;
+//    private IEnumerator GenerateRevisionImage(string revisionPrompt)
+//    {
+//        string url =
+//            backendUrl +
+//            "/generate-full-poster-image";
 
-            yield break;
-        }
+//        PosterImageRequest requestData =
+//            new PosterImageRequest
+//            {
+//                userPrompt =
+//                    revisionPrompt
+//            };
 
-        // SUCCESS
-        HideLoading();
+//        string jsonBody =
+//            JsonUtility.ToJson(
+//                requestData);
 
-        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-            "Revision "
-            + currentRevisionCount
-            + " completed. "
-            + (maxRevisionCount - currentRevisionCount)
-            + " revisions remaining."
-        );
+//        using UnityWebRequest request =
+//            new UnityWebRequest(
+//                url,
+//                "POST");
 
-        FullPosterImageResponse response =
-            JsonUtility.FromJson<FullPosterImageResponse>(
-                request.downloadHandler.text);
+//        byte[] bodyRaw =
+//            Encoding.UTF8.GetBytes(
+//                jsonBody);
 
-        latestImageUrl =
-            response.imageUrl;
+//        request.uploadHandler =
+//            new UploadHandlerRaw(
+//                bodyRaw);
 
-        currentRevisionCount++;
+//        request.downloadHandler =
+//            new DownloadHandlerBuffer();
 
-        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
+//        request.SetRequestHeader(
+//            "Content-Type",
+//            "application/json");
 
-        data.revisionPrompt = revisionPromptInput.text;
-        data.revisionCount = currentRevisionCount;
-        data.revisedImageUrl = latestImageUrl;
-        data.lastPage = "Revision";
+//        ShowLoading(
+//            "Applying your poster revisions. Please wait."
+//        );
 
-        ParticipantManager.Instance.Save();
+//        yield return request.SendWebRequest();
 
-        statusText.text =
-            "Revision "
-            + currentRevisionCount
-            + " of "
-            + maxRevisionCount;
+//        if (request.result !=
+//            UnityWebRequest.Result.Success)
+//        {
+//            HideLoading(); // Hide popup if error
 
-        yield return StartCoroutine(DownloadImage(response.imageUrl,true));
+//            statusText.text =
+//                request.error;
 
+//            yield break;
+//        }
 
+//        // SUCCESS
+//        HideLoading();
 
-    }
+//        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//            "Revision "
+//            + currentRevisionCount
+//            + " completed. "
+//            + (maxRevisionCount - currentRevisionCount)
+//            + " revisions remaining."
+//        );
 
-    private IEnumerator DownloadRevisionImage(
-    string imageUrl)
-    {
-        using UnityWebRequest request =
-            UnityWebRequestTexture.GetTexture(
-                imageUrl);
+//        FullPosterImageResponse response =
+//            JsonUtility.FromJson<FullPosterImageResponse>(
+//                request.downloadHandler.text);
 
-        yield return request.SendWebRequest();
+//        latestImageUrl =
+//            response.imageUrl;
 
-        if (request.result !=
-            UnityWebRequest.Result.Success)
-        {
-            yield break;
-        }
+//        currentRevisionCount++;
 
-        Texture2D texture =
-            DownloadHandlerTexture.GetContent(
-                request);
+//        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
 
-        revisionPosterRawImage.texture =
-            texture;
+//        data.revisionPrompt = revisionPromptInput.text;
+//        data.revisionCount = currentRevisionCount;
+//        data.revisedImageUrl = latestImageUrl;
+//        data.lastPage = "Revision";
 
-        statusText.text =
-            "Revision generated.";
-    }
+//        ParticipantManager.Instance.Save();
 
+//        statusText.text =
+//            "Revision "
+//            + currentRevisionCount
+//            + " of "
+//            + maxRevisionCount;
 
-    //AI Scoring
-    public void CalculateAIScore()
-    {
-        if (string.IsNullOrWhiteSpace(revisionPromptInput.text))
-        {
-            revisionPromptInput.text =
-                "No changes required. The participant accepted the original poster because it already met the design objectives.";
-        }
+//        yield return StartCoroutine(DownloadImage(response.imageUrl, true));
 
-        if (string.IsNullOrWhiteSpace(finalExplanationInput.text))
-        {
-            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-                "Please enter your final explanation."
-            );
 
-            return;
-        }
 
+//    }
 
-        if (string.IsNullOrEmpty(latestImageUrl))
-        {
-            statusText.text = "Generate poster first.";
-            return;
-        }
+//    private IEnumerator DownloadRevisionImage(
+//    string imageUrl)
+//    {
+//        using UnityWebRequest request =
+//            UnityWebRequestTexture.GetTexture(
+//                imageUrl);
 
-        StartCoroutine(PostScoreRequest());
-    }
+//        yield return request.SendWebRequest();
 
-    private IEnumerator PostScoreRequest()
-    {
-        string url = backendUrl + "/score-full-poster";
+//        if (request.result !=
+//            UnityWebRequest.Result.Success)
+//        {
+//            yield break;
+//        }
 
-        ScoreRequest requestData = new ScoreRequest
-        {
-            userPrompt = promptInput.text,
-            imageUrl = latestImageUrl,
-            revisionPrompt =
-                revisionPromptInput.text,
-            finalExplanation = finalExplanationInput.text
-        };
+//        Texture2D texture =
+//            DownloadHandlerTexture.GetContent(
+//                request);
 
-        string jsonBody =
-            JsonUtility.ToJson(requestData);
+//        revisionPosterRawImage.texture =
+//            texture;
 
-        using UnityWebRequest request =
-            new UnityWebRequest(url, "POST");
+//        statusText.text =
+//            "Revision generated.";
+//    }
 
-        byte[] bodyRaw =
-            Encoding.UTF8.GetBytes(jsonBody);
 
-        request.uploadHandler =
-            new UploadHandlerRaw(bodyRaw);
+//    //AI Scoring
+//    public void CalculateAIScore()
+//    {
+//        if (string.IsNullOrWhiteSpace(revisionPromptInput.text))
+//        {
+//            revisionPromptInput.text =
+//                "No changes required. The participant accepted the original poster because it already met the design objectives.";
+//        }
 
-        request.downloadHandler =
-            new DownloadHandlerBuffer();
+//        if (string.IsNullOrWhiteSpace(finalExplanationInput.text))
+//        {
+//            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//                "Please enter your final explanation."
+//            );
 
-        request.SetRequestHeader(
-            "Content-Type",
-            "application/json");
+//            return;
+//        }
 
-        ShowLoading(
-            "Evaluating your submission. Please wait."
-        );
-        
-        yield return request.SendWebRequest();
 
-        if (request.result != UnityWebRequest.Result.Success)
-        {
-            HideLoading();
+//        if (string.IsNullOrEmpty(latestImageUrl))
+//        {
+//            statusText.text = "Generate poster first.";
+//            return;
+//        }
 
-            isProcessing = false;
+//        StartCoroutine(PostScoreRequest());
+//    }
 
-            statusText.text =
-                "Score API Error: " + request.error;
+//    private IEnumerator PostScoreRequest()
+//    {
+//        string url = backendUrl + "/score-full-poster";
 
-            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-                "Evaluation failed. Please try again."
-            );
+//        ScoreRequest requestData = new ScoreRequest
+//        {
+//            userPrompt = promptInput.text,
+//            imageUrl = latestImageUrl,
+//            revisionPrompt =
+//                revisionPromptInput.text,
+//            finalExplanation = finalExplanationInput.text
+//        };
 
-            Debug.LogError(
-                request.downloadHandler.text);
+//        string jsonBody =
+//            JsonUtility.ToJson(requestData);
 
-            yield break;
-        }
+//        using UnityWebRequest request =
+//            new UnityWebRequest(url, "POST");
 
-        HideLoading();
+//        byte[] bodyRaw =
+//            Encoding.UTF8.GetBytes(jsonBody);
 
-        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-            "Evaluation completed successfully. Opening score page."
-        );
+//        request.uploadHandler =
+//            new UploadHandlerRaw(bodyRaw);
 
+//        request.downloadHandler =
+//            new DownloadHandlerBuffer();
 
+//        request.SetRequestHeader(
+//            "Content-Type",
+//            "application/json");
 
-        yield return new WaitForSeconds(3f);
+//        ShowLoading(
+//            "Evaluating your submission. Please wait."
+//        );
 
-        ScoreResponse response =
-            JsonUtility.FromJson<ScoreResponse>(
-                request.downloadHandler.text);
+//        yield return request.SendWebRequest();
 
-        DisplayScore(response);
+//        if (request.result != UnityWebRequest.Result.Success)
+//        {
+//            HideLoading();
 
-        CloseAllPanels();
+//            isProcessing = false;
 
-        scorePanel.SetActive(true);
+//            statusText.text =
+//                "Score API Error: " + request.error;
 
-        yield return new WaitForSeconds(1f);
+//            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//                "Evaluation failed. Please try again."
+//            );
 
-        if (UAP_AccessibilityManager.IsEnabled())
-        {
-            ReadScore();
-        }
+//            Debug.LogError(
+//                request.downloadHandler.text);
 
+//            yield break;
+//        }
 
-    }
-    private void DisplayScore(ScoreResponse response)
-    {
-        promptQualityText.text = response.score.promptQuality + "/20";
+//        HideLoading();
 
-        posterMessageText.text = response.score.posterMessage + "/20";
+//        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//            "Evaluation completed successfully. Opening score page."
+//        );
 
-        designOutputText.text = response.score.designQuality + "/20";
 
-        accessibilityText.text = response.score.accessibilityUnderstanding + "/20";
 
-        int finalSubmissionScore = response.score.revisionProcess + response.score.finalExplanation;
+//        yield return new WaitForSeconds(3f);
 
-        finalExplanationScoreText.text = finalSubmissionScore + "/20";
+//        ScoreResponse response =
+//            JsonUtility.FromJson<ScoreResponse>(
+//                request.downloadHandler.text);
 
-        totalScoreText.text = response.score.total + "/100";
+//        DisplayScore(response);
 
-        feedbackText.text = response.score.feedback;
+//        CloseAllPanels();
 
-        suggestionText.text = response.score.improvementSuggestion;
+//        scorePanel.SetActive(true);
 
-        ParticipantManager.Instance.CurrentParticipant.isCompleted = true;
+//        yield return new WaitForSeconds(1f);
 
-        ParticipantManager.Instance.CurrentParticipant.completedDate =
-            DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+//        if (UAP_AccessibilityManager.IsEnabled())
+//        {
+//            ReadScore();
+//        }
 
 
+//    }
+//    private void DisplayScore(ScoreResponse response)
+//    {
+//        promptQualityText.text = response.score.promptQuality + "/20";
 
-        ParticipantManager.Instance.CurrentParticipant.finalExplanation = finalExplanationInput.text;
+//        posterMessageText.text = response.score.posterMessage + "/20";
 
-        ParticipantManager.Instance.CurrentParticipant.score = response.score.total;
+//        designOutputText.text = response.score.designQuality + "/20";
 
-        ParticipantManager.Instance.CurrentParticipant.promptQuality = response.score.promptQuality;
+//        accessibilityText.text = response.score.accessibilityUnderstanding + "/20";
 
-        ParticipantManager.Instance.CurrentParticipant.posterMessage = response.score.posterMessage;
+//        int finalSubmissionScore = response.score.revisionProcess + response.score.finalExplanation;
 
-        ParticipantManager.Instance.CurrentParticipant.designQuality = response.score.designQuality;
+//        finalExplanationScoreText.text = finalSubmissionScore + "/20";
 
-        ParticipantManager.Instance.CurrentParticipant.accessibilityUnderstanding = response.score.accessibilityUnderstanding;
+//        totalScoreText.text = response.score.total + "/100";
 
-        ParticipantManager.Instance.CurrentParticipant.revisionProcessScore = response.score.revisionProcess;
+//        feedbackText.text = response.score.feedback;
 
-        ParticipantManager.Instance.CurrentParticipant.finalExplanationScore = response.score.revisionProcess + response.score.finalExplanation;
+//        suggestionText.text = response.score.improvementSuggestion;
 
-        ParticipantManager.Instance.CurrentParticipant.feedback = response.score.feedback;
+//        ParticipantManager.Instance.CurrentParticipant.isCompleted = true;
 
-        ParticipantManager.Instance.CurrentParticipant.improvementSuggestion = response.score.improvementSuggestion;
+//        ParticipantManager.Instance.CurrentParticipant.completedDate =
+//            DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
 
-        ParticipantManager.Instance.CurrentParticipant.lastPage = "Score";
 
+//        ParticipantManager.Instance.CurrentParticipant.finalExplanation = finalExplanationInput.text;
 
-        
+//        ParticipantManager.Instance.CurrentParticipant.score = response.score.total;
 
-        scoreSpeechText =
-         "Evaluation completed. "
+//        ParticipantManager.Instance.CurrentParticipant.promptQuality = response.score.promptQuality;
 
-         + "Total score: "
-         + response.score.total
-         + " out of one hundred. "
+//        ParticipantManager.Instance.CurrentParticipant.posterMessage = response.score.posterMessage;
 
-         + "Prompt quality: "
-         + response.score.promptQuality
-         + " out of twenty. "
+//        ParticipantManager.Instance.CurrentParticipant.designQuality = response.score.designQuality;
 
-         + "Poster message and content: "
-         + response.score.posterMessage
-         + " out of twenty. "
+//        ParticipantManager.Instance.CurrentParticipant.accessibilityUnderstanding = response.score.accessibilityUnderstanding;
 
-         + "Design output quality: " 
-         + response.score.designQuality
-         + " out of twenty. "
+//        ParticipantManager.Instance.CurrentParticipant.revisionProcessScore = response.score.revisionProcess;
 
-         + "Accessibility understanding: "
-         + response.score.accessibilityUnderstanding
-         + " out of twenty. "
+//        ParticipantManager.Instance.CurrentParticipant.finalExplanationScore = response.score.revisionProcess + response.score.finalExplanation;
 
-         + "Final design justification: "
-         + finalSubmissionScore
-         + " out of twenty. "
+//        ParticipantManager.Instance.CurrentParticipant.feedback = response.score.feedback;
 
-         + "Feedback: "
-         + response.score.feedback
+//        ParticipantManager.Instance.CurrentParticipant.improvementSuggestion = response.score.improvementSuggestion;
 
-         + ". Improvement suggestion: "
-         + response.score.improvementSuggestion;
 
+//        ParticipantManager.Instance.CurrentParticipant.lastPage = "Score";
 
-        StartCoroutine(SaveScoreAndRefreshLeaderboard());
 
 
-    }
 
-    private IEnumerator SaveScoreAndRefreshLeaderboard()
-    {
-        Debug.Log("===== BEFORE SAVE =====");
+//        scoreSpeechText =
+//         "Evaluation completed. "
 
-        Debug.Log("EntryID = " +
-            ParticipantManager.Instance.CurrentParticipant.entryID);
+//         + "Total score: "
+//         + response.score.total
+//         + " out of one hundred. "
 
-        Debug.Log("Completed = " +
-            ParticipantManager.Instance.CurrentParticipant.isCompleted);
+//         + "Prompt quality: "
+//         + response.score.promptQuality
+//         + " out of twenty. "
 
-        Debug.Log("CompletedDate = " +
-            ParticipantManager.Instance.CurrentParticipant.completedDate);
+//         + "Poster message and content: "
+//         + response.score.posterMessage
+//         + " out of twenty. "
 
-        Debug.Log("Score = " +
-            ParticipantManager.Instance.CurrentParticipant.score);
+//         + "Design output quality: "
+//         + response.score.designQuality
+//         + " out of twenty. "
 
-        var saveTask =
-            ParticipantManager.Instance.Save();
+//         + "Accessibility understanding: "
+//         + response.score.accessibilityUnderstanding
+//         + " out of twenty. "
 
-        yield return new WaitUntil(() => saveTask.IsCompleted);
+//         + "Final design justification: "
+//         + finalSubmissionScore
+//         + " out of twenty. "
 
-        MainMenuManager menu = FindFirstObjectByType<MainMenuManager>();
+//         + "Feedback: "
+//         + response.score.feedback
 
-        if (menu != null)
-        {
-            var refreshTask = menu.RefreshButtons();
+//         + ". Improvement suggestion: "
+//         + response.score.improvementSuggestion;
 
-            yield return new WaitUntil(() => refreshTask.IsCompleted);
-        }
 
-        LeaderboardManager leaderboard = FindFirstObjectByType<LeaderboardManager>();
+//        StartCoroutine(SaveScoreAndRefreshLeaderboard());
 
 
-        if (leaderboard != null)
-        {
-            leaderboard.LoadLeaderboard();
-        }
+//    }
 
-        Debug.Log("Submission completed.");
-    }
+//    private IEnumerator SaveScoreAndRefreshLeaderboard()
+//    {
+//        Debug.Log("===== BEFORE SAVE =====");
 
-    public void ReadScore()
-    {
-        if (!AccessibilityToggle.AccessibilityEnabled)
-            return;
+//        Debug.Log("EntryID = " +
+//            ParticipantManager.Instance.CurrentParticipant.entryID);
 
-        if (string.IsNullOrEmpty(scoreSpeechText))
-            return;
+//        Debug.Log("Completed = " +
+//            ParticipantManager.Instance.CurrentParticipant.isCompleted);
 
-        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(scoreSpeechText);
-    }
+//        Debug.Log("CompletedDate = " +
+//            ParticipantManager.Instance.CurrentParticipant.completedDate);
 
-    public void ShowLoading(string message)
-    {
-        loadingPanel.SetActive(true);
+//        Debug.Log("Score = " +
+//            ParticipantManager.Instance.CurrentParticipant.score);
 
-        loadingMessage.text = message;
+//        var saveTask =
+//            ParticipantManager.Instance.Save();
 
-        if (loadingVoiceCoroutine != null)
-            StopCoroutine(loadingVoiceCoroutine);
+//        yield return new WaitUntil(() => saveTask.IsCompleted);
 
-        loadingVoiceCoroutine =
-            StartCoroutine(
-                RepeatLoadingVoice(message)
-            );
-    }
+//        MainMenuManager menu = FindFirstObjectByType<MainMenuManager>();
 
-    private IEnumerator RepeatLoadingVoice(string message)
-    {
-        while (loadingPanel.activeSelf)
-        {
-            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(message);
+//        if (menu != null)
+//        {
+//            var refreshTask = menu.RefreshButtons();
 
-            yield return new WaitForSeconds(6f);
-        }
-    }
+//            yield return new WaitUntil(() => refreshTask.IsCompleted);
+//        }
 
-    public void HideLoading()
-    {
-        loadingPanel.SetActive(false);
+//        LeaderboardManager leaderboard = FindFirstObjectByType<LeaderboardManager>();
 
-        if (loadingVoiceCoroutine != null)
-        {
-            StopCoroutine(loadingVoiceCoroutine);
-            loadingVoiceCoroutine = null;
-        }
-    }
 
-    public void OpenRevisePosterReview()
-    {
-        revisionPanel.SetActive(false);
+//        if (leaderboard != null)
+//        {
+//            leaderboard.LoadLeaderboard();
+//        }
 
-        revisionPosterReviewPanel.SetActive(true);
+//        Debug.Log("Submission completed.");
+//    }
 
-        if (revisedPosterTexture != null)
-        {
-            revisionReviewRawImage.texture =
-                revisedPosterTexture;
-        }
-        else
-        {
-            revisionReviewRawImage.texture =
-                originalPosterTexture;
-        }
+//    public void ReadScore()
+//    {
+//        if (!AccessibilityToggle.AccessibilityEnabled)
+//            return;
 
-        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-            "Opening revised poster."
-        );
-    }
+//        if (string.IsNullOrEmpty(scoreSpeechText))
+//            return;
 
-    public void OpenFinalPosterReviewInScore()
-    {
-        scorePanel.SetActive(false);
+//        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(scoreSpeechText);
+//    }
 
-        scorePosterReviewPanel.SetActive(true);
+//    public void ShowLoading(string message)
+//    {
+//        loadingPanel.SetActive(true);
 
-        if (revisedPosterTexture != null)
-        {
-            scoreReviewRawImage.texture =
-                revisedPosterTexture;
-        }
-        else
-        {
-            scoreReviewRawImage.texture =
-                originalPosterTexture;
-        }
+//        loadingMessage.text = message;
 
-        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-            "Opening final revised poster."
-        );
-    }
+//        if (loadingVoiceCoroutine != null)
+//            StopCoroutine(loadingVoiceCoroutine);
 
-    public void CloseScorePosterReview()
-    {
-        scorePosterReviewPanel.SetActive(false);
+//        loadingVoiceCoroutine =
+//            StartCoroutine(
+//                RepeatLoadingVoice(message)
+//            );
+//    }
 
-        scorePanel.SetActive(true);
+//    private IEnumerator RepeatLoadingVoice(string message)
+//    {
+//        while (loadingPanel.activeSelf)
+//        {
+//            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(message);
 
-        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-            "Returning to score page."
-        );
-    }
+//            yield return new WaitForSeconds(6f);
+//        }
+//    }
 
-    public void CloseRevisionPosterReview()
-    {
-        revisionPosterReviewPanel.SetActive(false);
+//    public void HideLoading()
+//    {
+//        loadingPanel.SetActive(false);
 
-        revisionPanel.SetActive(true);
+//        if (loadingVoiceCoroutine != null)
+//        {
+//            StopCoroutine(loadingVoiceCoroutine);
+//            loadingVoiceCoroutine = null;
+//        }
+//    }
 
-        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
-            "Returning to revision page."
-        );
-    }
+//    public void OpenRevisePosterReview()
+//    {
+//        revisionPanel.SetActive(false);
 
-    public void LoadParticipant()
-    {
-        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
+//        revisionPosterReviewPanel.SetActive(true);
 
-        if (data == null)
-        {
-            Debug.Log("No participant data loaded.");
-            return;
-        }
+//        if (revisedPosterTexture != null)
+//        {
+//            revisionReviewRawImage.texture =
+//                revisedPosterTexture;
+//        }
+//        else
+//        {
+//            revisionReviewRawImage.texture =
+//                originalPosterTexture;
+//        }
 
-        //---------------------------------------
-        // Participant
-        //---------------------------------------
+//        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//            "Opening revised poster."
+//        );
+//    }
 
-        participantNameInput.text = data.participantName;
-        institutionInput.text = data.institution;
+//    public void OpenFinalPosterReviewInScore()
+//    {
+//        scorePanel.SetActive(false);
 
+//        scorePosterReviewPanel.SetActive(true);
 
-        // Restore Category Type
-        for (int i = 0; i < categoryTypeDropdown.options.Count; i++)
-        {
-            if (categoryTypeDropdown.options[i].text == data.categoryType)
-            {
-                categoryTypeDropdown.value = i;
-                break;
-            }
-        }
+//        if (revisedPosterTexture != null)
+//        {
+//            scoreReviewRawImage.texture =
+//                revisedPosterTexture;
+//        }
+//        else
+//        {
+//            scoreReviewRawImage.texture =
+//                originalPosterTexture;
+//        }
 
-        // Restore Sub Category
-        for (int i = 0; i < subCategoryDropdown.options.Count; i++)
-        {
-            if (subCategoryDropdown.options[i].text == data.subCategory)
-            {
-                subCategoryDropdown.value = i;
-                break;
-            }
-        }
+//        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//            "Opening final revised poster."
+//        );
+//    }
 
-        //---------------------------------------
-        // Prompt
-        //---------------------------------------
+//    public void CloseScorePosterReview()
+//    {
+//        scorePosterReviewPanel.SetActive(false);
 
-        promptInput.text = data.prompt;
+//        scorePanel.SetActive(true);
 
-        //---------------------------------------
-        // Revision
-        //---------------------------------------
+//        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//            "Returning to score page."
+//        );
+//    }
 
-        revisionPromptInput.text = data.revisionPrompt;
+//    public void CloseRevisionPosterReview()
+//    {
+//        revisionPosterReviewPanel.SetActive(false);
 
-     
+//        revisionPanel.SetActive(true);
 
-        //---------------------------------------
-        // Final Explanation
-        //---------------------------------------
+//        AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
+//            "Returning to revision page."
+//        );
+//    }
 
-        finalExplanationInput.text = data.finalExplanation;
+//    public void LoadParticipant()
+//    {
+//        ParticipantData data = ParticipantManager.Instance.CurrentParticipant;
 
-        if (data.isCompleted)
-        {
-            finalExplanationNextButton.interactable = true;
-        }
+//        if (data == null)
+//        {
+//            Debug.Log("No participant data loaded.");
+//            return;
+//        }
 
+//        //---------------------------------------
+//        // Participant
+//        //---------------------------------------
 
-        //---------------------------------------
-        // Description
-        //---------------------------------------
+//        participantNameInput.text = data.participantName;
+//        institutionInput.text = data.institution;
 
-        detailsText.text = data.posterDescription;
 
-        lastDescription = data.posterDescription;
+//        // Restore Category Type
+//        for (int i = 0; i < categoryTypeDropdown.options.Count; i++)
+//        {
+//            if (categoryTypeDropdown.options[i].text == data.categoryType)
+//            {
+//                categoryTypeDropdown.value = i;
+//                break;
+//            }
+//        }
 
-        isDescriptionReady =
-            !string.IsNullOrEmpty(data.posterDescription);
+//        // Restore Sub Category
+//        for (int i = 0; i < subCategoryDropdown.options.Count; i++)
+//        {
+//            if (subCategoryDropdown.options[i].text == data.subCategory)
+//            {
+//                subCategoryDropdown.value = i;
+//                break;
+//            }
+//        }
 
-        outputNextButton.interactable =
-            isDescriptionReady;
+//        //---------------------------------------
+//        // Prompt
+//        //---------------------------------------
 
-        //---------------------------------------
-        // Score
-        //---------------------------------------
+//        promptInput.text = data.prompt;
 
-        promptQualityText.text = data.promptQuality + "/20";
-        posterMessageText.text = data.posterMessage + "/20";
-        designOutputText.text = data.designQuality + "/20";
-        accessibilityText.text = data.accessibilityUnderstanding + "/20";
-        finalExplanationScoreText.text = data.finalExplanationScore + "/20";
-        totalScoreText.text = data.score + "/100";
+//        //---------------------------------------
+//        // Revision
+//        //---------------------------------------
 
-        feedbackText.text = data.feedback;
-        suggestionText.text = data.improvementSuggestion;
+//        revisionPromptInput.text = data.revisionPrompt;
 
-        //---------------------------------------
-        // Internal Variables
-        //---------------------------------------
 
-        if (!string.IsNullOrEmpty(data.revisedImageUrl))
-        {
-            latestImageUrl = data.revisedImageUrl;
-        }
-        else
-        {
-            latestImageUrl = data.originalImageUrl;
-        }
 
-        currentRevisionCount = data.revisionCount;
+//        //---------------------------------------
+//        // Final Explanation
+//        //---------------------------------------
 
-        //---------------------------------------
-        // Load Local Images
-        //---------------------------------------
-        if (!string.IsNullOrEmpty(data.originalImageUrl))
-        {
-            StartCoroutine(DownloadImage(data.originalImageUrl, false, true));
-        }
+//        finalExplanationInput.text = data.finalExplanation;
 
-        if (!string.IsNullOrEmpty(data.revisedImageUrl))
-        {
-            StartCoroutine(DownloadImage(data.revisedImageUrl, true, true));
-        }
+//        if (data.isCompleted)
+//        {
+//            finalExplanationNextButton.interactable = true;
+//        }
 
 
-        if (ParticipantManager.Instance.CurrentParticipant.isCompleted)
-        {
-            SetSubmissionReadOnly(true);
-        }
-        else
-        {
-            SetSubmissionReadOnly(false);
-        }
+//        //---------------------------------------
+//        // Description
+//        //---------------------------------------
 
-    }
+//        detailsText.text = data.posterDescription;
 
+//        lastDescription = data.posterDescription;
 
+//        isDescriptionReady =
+//            !string.IsNullOrEmpty(data.posterDescription);
 
-    public void PrepareForNewChallenge()
-    {
-        // State
-        isProcessing = false;
-        isRevisionMode = false;
-        isDescriptionReady = false;
+//        outputNextButton.interactable =
+//            isDescriptionReady;
 
+//        //---------------------------------------
+//        // Score
+//        //---------------------------------------
 
-        currentRevisionCount = 0;
+//        promptQualityText.text = data.promptQuality + "/20";
+//        posterMessageText.text = data.posterMessage + "/20";
+//        designOutputText.text = data.designQuality + "/20";
+//        accessibilityText.text = data.accessibilityUnderstanding + "/20";
+//        finalExplanationScoreText.text = data.finalExplanationScore + "/20";
+//        totalScoreText.text = data.score + "/100";
 
-        latestImageUrl = "";
-        latestPromptUsed = "";
-        latestStoragePath = "";
+//        feedbackText.text = data.feedback;
+//        suggestionText.text = data.improvementSuggestion;
 
-        lastDescription = "";
-        revisionHistory = "";
-        scoreSpeechText = "";
+//        //---------------------------------------
+//        // Internal Variables
+//        //---------------------------------------
 
-        // Text
-        promptInput.text = "";
-        revisionPromptInput.text = "";
-        finalExplanationInput.text = "";
-        detailsText.text = "";
+//        if (!string.IsNullOrEmpty(data.revisedImageUrl))
+//        {
+//            latestImageUrl = data.revisedImageUrl;
+//        }
+//        else
+//        {
+//            latestImageUrl = data.originalImageUrl;
+//        }
 
-        promptQualityText.text = "";
-        posterMessageText.text = "";
-        designOutputText.text = "";
-        accessibilityText.text = "";
-        finalExplanationScoreText.text = "";
-        totalScoreText.text = "";
-        feedbackText.text = "";
-        suggestionText.text = "";
+//        currentRevisionCount = data.revisionCount;
 
-        // Images
-        posterRawImage.texture = null;
-        descriptionRawImage.texture = null;
-        revisionPosterRawImage.texture = null;
-        scoreReviewRawImage.texture = null;
+//        //---------------------------------------
+//        // Load Local Images
+//        //---------------------------------------
+//        if (!string.IsNullOrEmpty(data.originalImageUrl))
+//        {
+//            StartCoroutine(DownloadImage(data.originalImageUrl, false, true));
+//        }
 
-        originalPosterTexture = null;
-        revisedPosterTexture = null;
+//        if (!string.IsNullOrEmpty(data.revisedImageUrl))
+//        {
+//            StartCoroutine(DownloadImage(data.revisedImageUrl, true, true));
+//        }
 
-        // Restore UI
-        HideLoading();
 
-        promptInput.interactable = true;
-        revisionPromptInput.interactable = true;
-        finalExplanationInput.interactable = true;
+//        if (ParticipantManager.Instance.CurrentParticipant.isCompleted)
+//        {
+//            SetSubmissionReadOnly(true);
+//        }
+//        else
+//        {
+//            SetSubmissionReadOnly(false);
+//        }
 
-        outputNextButton.interactable = true;
+//    }
 
-        generatePosterButton.SetActive(true);
-        generateRevisionButton.SetActive(true);
-        calculateScoreButton.SetActive(true);
 
-        sample1.SetActive(true);
-        sample2.SetActive(true);
-        sample3.SetActive(true);
 
-        outputNextButton.interactable = true;
+//    public void PrepareForNewChallenge()
+//    {
+//        // State
+//        isProcessing = false;
+//        isRevisionMode = false;
+//        isDescriptionReady = false;
 
 
+//        currentRevisionCount = 0;
 
-        finalExplanationNextButton.interactable = false;
+//        latestImageUrl = "";
+//        latestPromptUsed = "";
+//        latestStoragePath = "";
 
-        Debug.Log("PrepareForNewChallenge()");
-    }
+//        lastDescription = "";
+//        revisionHistory = "";
+//        scoreSpeechText = "";
 
+//        // Text
+//        promptInput.text = "";
+//        revisionPromptInput.text = "";
+//        finalExplanationInput.text = "";
+//        detailsText.text = "";
 
-    public void ResetSystem()
-    {
+//        promptQualityText.text = "";
+//        posterMessageText.text = "";
+//        designOutputText.text = "";
+//        accessibilityText.text = "";
+//        finalExplanationScoreText.text = "";
+//        totalScoreText.text = "";
+//        feedbackText.text = "";
+//        suggestionText.text = "";
 
+//        // Images
+//        posterRawImage.texture = null;
+//        descriptionRawImage.texture = null;
+//        revisionPosterRawImage.texture = null;
+//        scoreReviewRawImage.texture = null;
 
-        participantNameInput.text = "";
-        institutionInput.text = "";
-        categoryTypeDropdown.value = 0;
-        subCategoryDropdown.value = 0;
+//        originalPosterTexture = null;
+//        revisedPosterTexture = null;
 
+//        // Restore UI
+//        HideLoading();
 
-        currentRevisionCount = 0;
+//        promptInput.interactable = true;
+//        revisionPromptInput.interactable = true;
+//        finalExplanationInput.interactable = true;
 
-        latestImageUrl = "";
-        latestPromptUsed = "";
-        latestStoragePath = "";
-        lastDescription = "";
-        scoreSpeechText = "";
+//        outputNextButton.interactable = true;
 
-        promptInput.text = "";
-        revisionPromptInput.text = "";
-        finalExplanationInput.text = "";
+//        generatePosterButton.SetActive(true);
+//        generateRevisionButton.SetActive(true);
+//        calculateScoreButton.SetActive(true);
 
-        detailsText.text = "";
+//        sample1.SetActive(true);
+//        sample2.SetActive(true);
+//        sample3.SetActive(true);
 
-        promptQualityText.text = "";
-        posterMessageText.text = "";
-        designOutputText.text = "";
-        accessibilityText.text = "";
-        finalExplanationScoreText.text = "";
-        totalScoreText.text = "";
+//        outputNextButton.interactable = true;
 
-        feedbackText.text = "";
-        suggestionText.text = "";
 
-        posterRawImage.texture = null;
-        descriptionRawImage.texture = null;
-        revisionPosterRawImage.texture = null;
-        scoreReviewRawImage.texture = null;
-        originalPosterTexture = null;
-        revisedPosterTexture = null;
 
-        isDescriptionReady = false;
-        isRevisionMode = false;
-        isProcessing = false;
+//        finalExplanationNextButton.interactable = false;
 
-        revisionHistory = "";
+//        Debug.Log("PrepareForNewChallenge()");
+//    }
 
-        outputNextButton.interactable = true;
 
+//    public void ResetSystem()
+//    {
 
-        finalExplanationNextButton.interactable = false;
 
+//        participantNameInput.text = "";
+//        institutionInput.text = "";
+//        categoryTypeDropdown.value = 0;
+//        subCategoryDropdown.value = 0;
 
 
-        SetSubmissionReadOnly(false);
+//        currentRevisionCount = 0;
 
-        HideLoading();
+//        latestImageUrl = "";
+//        latestPromptUsed = "";
+//        latestStoragePath = "";
+//        lastDescription = "";
+//        scoreSpeechText = "";
 
+//        promptInput.text = "";
+//        revisionPromptInput.text = "";
+//        finalExplanationInput.text = "";
 
-    }
+//        detailsText.text = "";
 
+//        promptQualityText.text = "";
+//        posterMessageText.text = "";
+//        designOutputText.text = "";
+//        accessibilityText.text = "";
+//        finalExplanationScoreText.text = "";
+//        totalScoreText.text = "";
 
+//        feedbackText.text = "";
+//        suggestionText.text = "";
 
-    public void CloseAllPanels()
-    {
-        loginPanel.SetActive(false);
-        registerPanel.SetActive(false);
-        mainMenuPanel.SetActive(false);
-        instructionPanel.SetActive(false);
-        challengePanel.SetActive(false);
-        participantDetailsPanel.SetActive(false);
-        promptPanel.SetActive(false);
-        outputPanel.SetActive(false);
-        descriptionPanel.SetActive(false);
-        revisionPanel.SetActive(false);
-        finalExplanationPanel.SetActive(false);
-        scorePanel.SetActive(false);
-        scorePosterReviewPanel.SetActive(false);
-        originalPreviewPanel.SetActive(false);
-        leaderboardPanel.SetActive(false);
-        submittedPanel.SetActive(false);
-    }
+//        posterRawImage.texture = null;
+//        descriptionRawImage.texture = null;
+//        revisionPosterRawImage.texture = null;
+//        scoreReviewRawImage.texture = null;
+//        originalPosterTexture = null;
+//        revisedPosterTexture = null;
 
-    public void SetSubmissionReadOnly(bool isReadOnly)
-    {
-        // Input Fields
-        promptInput.interactable = !isReadOnly;
-        revisionPromptInput.interactable = !isReadOnly;
-        finalExplanationInput.interactable = !isReadOnly;
+//        isDescriptionReady = false;
+//        isRevisionMode = false;
+//        isProcessing = false;
 
-        // Hide buttons
-        generatePosterButton.SetActive(!isReadOnly);
-        generateRevisionButton.SetActive(!isReadOnly);
-        calculateScoreButton.SetActive(!isReadOnly);
-        sample1.SetActive(!isReadOnly);
-        sample2.SetActive(!isReadOnly);
-        sample3.SetActive(!isReadOnly);
-    }
+//        revisionHistory = "";
 
+//        outputNextButton.interactable = true;
 
 
+//        finalExplanationNextButton.interactable = false;
 
-}
 
 
+//        SetSubmissionReadOnly(false);
 
-[Serializable]
-public class PosterImageRequest
-{
-    public string userPrompt;
-}
+//        HideLoading();
 
-[Serializable] 
-public class FullPosterImageResponse 
-{ 
-    public bool success; 
-    public string imageUrl; 
-    public string storagePath; 
-    public string mimeType; 
-    public string promptUsed; 
-}
 
+//    }
 
-[Serializable]
-public class DescribeImageRequest
-{
-    public string imageUrl;
-}
-    
-[Serializable]
-public class DescribeImageResponse
-{
-    public bool success;
-    public ImageDescription description;
-}
 
-[Serializable]
-public class ImageDescription
-{
-    public string shortDescription;
-    public string detailedDescription;
-    public string detectedText;
-    public string mainObjects;
-    public string colors;
-    public string layout;
-    public string message;
-}
 
-[Serializable]
-public class RevisionPosterRequest
-{
-    public string imageUrl;
-    public string revisionPrompt;
-}
+//    public void CloseAllPanels()
+//    {
+//        loginPanel.SetActive(false);
+//        registerPanel.SetActive(false);
+//        mainMenuPanel.SetActive(false);
+//        instructionPanel.SetActive(false);
+//        challengePanel.SetActive(false);
+//        participantDetailsPanel.SetActive(false);
+//        promptPanel.SetActive(false);
+//        outputPanel.SetActive(false);
+//        descriptionPanel.SetActive(false);
+//        revisionPanel.SetActive(false);
+//        finalExplanationPanel.SetActive(false);
+//        scorePanel.SetActive(false);
+//        scorePosterReviewPanel.SetActive(false);
+//        originalPreviewPanel.SetActive(false);
+//        leaderboardPanel.SetActive(false);
+//        submittedPanel.SetActive(false);
+//    }
 
-[Serializable]
-public class ScoreRequest
-{
-    public string userPrompt;
-    public string imageUrl;
-    public string revisionPrompt;
-    public string finalExplanation;
-}
+//    public void SetSubmissionReadOnly(bool isReadOnly)
+//    {
+//        // Input Fields
+//        promptInput.interactable = !isReadOnly;
+//        revisionPromptInput.interactable = !isReadOnly;
+//        finalExplanationInput.interactable = !isReadOnly;
 
-[Serializable]
-public class ScoreResponse
-{
-    public bool success;
+//        // Hide buttons
+//        generatePosterButton.SetActive(!isReadOnly);
+//        generateRevisionButton.SetActive(!isReadOnly);
+//        calculateScoreButton.SetActive(!isReadOnly);
+//        sample1.SetActive(!isReadOnly);
+//        sample2.SetActive(!isReadOnly);
+//        sample3.SetActive(!isReadOnly);
+//    }
 
-    public ScoreBreakdown score;
-}
 
-[Serializable]
-public class ScoreBreakdown
-{
-    public int promptQuality;
-    public int posterMessage;
-    public int designQuality;
-    public int accessibilityUnderstanding;
-    public int revisionProcess;
-    public int finalExplanation;
-    public int total;
-    public string feedback;
-    public string improvementSuggestion;
-}
+
+
+//}
+
+
+
+//[Serializable]
+//public class PosterImageRequest
+//{
+//    public string userPrompt;
+//}
+
+//[Serializable]
+//public class FullPosterImageResponse
+//{
+//    public bool success;
+//    public string imageUrl;
+//    public string storagePath;
+//    public string mimeType;
+//    public string promptUsed;
+//}
+
+
+//[Serializable]
+//public class DescribeImageRequest
+//{
+//    public string imageUrl;
+//}
+
+//[Serializable]
+//public class DescribeImageResponse
+//{
+//    public bool success;
+//    public ImageDescription description;
+//}
+
+//[Serializable]
+//public class ImageDescription
+//{
+//    public string shortDescription;
+//    public string detailedDescription;
+//    public string detectedText;
+//    public string mainObjects;
+//    public string colors;
+//    public string layout;
+//    public string message;
+//}
+
+//[Serializable]
+//public class RevisionPosterRequest
+//{
+//    public string imageUrl;
+//    public string revisionPrompt;
+//}
+
+//[Serializable]
+//public class ScoreRequest
+//{
+//    public string userPrompt;
+//    public string imageUrl;
+//    public string revisionPrompt;
+//    public string finalExplanation;
+//}
+
+//[Serializable]
+//public class ScoreResponse
+//{
+//    public bool success;
+
+//    public ScoreBreakdown score;
+//}
+
+//[Serializable]
+//public class ScoreBreakdown
+//{
+//    public int promptQuality;
+//    public int posterMessage;
+//    public int designQuality;
+//    public int accessibilityUnderstanding;
+//    public int revisionProcess;
+//    public int finalExplanation;
+//    public int total;
+//    public string feedback;
+//    public string improvementSuggestion;
+//}
 

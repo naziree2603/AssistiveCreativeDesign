@@ -1,30 +1,30 @@
-using UnityEngine;
+//using UnityEngine;
 
-public class EntryManager : MonoBehaviour
-{
-    public static EntryManager Instance;
+//public class EntryManager : MonoBehaviour
+//{
+//    public static EntryManager Instance;
 
-    public ParticipantData CurrentEntry;
+//    public ParticipantData CurrentEntry;
 
-    private void Awake()
-    {
-        if (Instance == null)
-        {
-            Instance = this;
+//    private void Awake()
+//    {
+//        if (Instance == null)
+//        {
+//            Instance = this;
 
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-    }
+//            DontDestroyOnLoad(gameObject);
+//        }
+//        else
+//        {
+//            Destroy(gameObject);
+//        }
+//    }
 
-    public void CreateNewEntry()
-    {
-        CurrentEntry = new ParticipantData();
+//    public void CreateNewEntry()
+//    {
+//        CurrentEntry = new ParticipantData();
 
-        CurrentEntry.createdDate =
-            System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-    }
-}
+//        CurrentEntry.createdDate =
+//            System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+//    }
+//}

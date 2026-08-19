@@ -1,101 +1,101 @@
-using System.Collections;
-using System.Threading.Tasks;
-using TMPro;
-using UnityEngine;
-using static AccessibilityToggle;
+//using System.Collections;
+//using System.Threading.Tasks;
+//using TMPro;
+//using UnityEngine;
+//using static AccessibilityToggle;
 
-public class ChallengePanelManager : MonoBehaviour
-{
-    public TMP_InputField eventCodeInput;
+//public class ChallengePanelManager : MonoBehaviour
+//{
+//    public TMP_InputField eventCodeInput;
 
-    public TMP_Text statusText;
+//    public TMP_Text statusText;
 
-    public MainMenuManager mainMenuManager;
+//    public MainMenuManager mainMenuManager;
 
-    public FullPosterImageAPI posterSystem;
+//    public FullPosterImageAPI posterSystem;
 
 
 
-    public async void JoinChallengeAsync()
-    {
+//    public async void JoinChallengeAsync()
+//    {
 
-        ChallengeData challenge = ChallengeManager.Instance.CurrentChallenge;
+//        ChallengeData challenge = ChallengeManager.Instance.CurrentChallenge;
 
-        string accountID = FirestoreAccountManager.Instance.CurrentAccount.documentID;
+//        string accountID = FirestoreAccountManager.Instance.CurrentAccount.documentID;
 
-        bool alreadySubmitted =
-            await FirestoreEntryManager.Instance.HasCompletedChallenge(
-                accountID,
-                challenge.challengeID);
+//        bool alreadySubmitted =
+//            await FirestoreEntryManager.Instance.HasCompletedChallenge(
+//                accountID,
+//                challenge.challengeID);
 
-        if (alreadySubmitted)
-        {
-            posterSystem.ShowLoading(
-                "You have already submitted this challenge. Please view your submission in History.");
+//        if (alreadySubmitted)
+//        {
+//            posterSystem.ShowLoading(
+//                "You have already submitted this challenge. Please view your submission in History.");
 
-            StartCoroutine(HidePopupAfterDelay());
+//            StartCoroutine(HidePopupAfterDelay());
 
-            return;
-        }
+//            return;
+//        }
 
-        if (challenge == null)
-        {
-            Debug.Log("No challenge selected.");
-            return;
-        }
+//        if (challenge == null)
+//        {
+//            Debug.Log("No challenge selected.");
+//            return;
+//        }
 
-        if (eventCodeInput.text.Trim() != challenge.eventCode)
-        {
-            statusText.text = "Invalid event code.";
-            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Invalid event code. Please try again.");
-            return;
-        }
+//        if (eventCodeInput.text.Trim() != challenge.eventCode)
+//        {
+//            statusText.text = "Invalid event code.";
+//            AccessibilityToggle.AccessibilitySpeech.SpeakNavigation("Invalid event code. Please try again.");
+//            return;
+//        }
 
-        ChallengeManager.Instance.SetCurrentChallenge(challenge);
+//        ChallengeManager.Instance.SetCurrentChallenge(challenge);
 
-        // Load profile from Firestore
-        bool hasProfile =
-            await FirestoreProfileManager.Instance.LoadCurrentProfile();
+//        // Load profile from Firestore
+//        bool hasProfile =
+//            await FirestoreProfileManager.Instance.LoadCurrentProfile();
 
-        if (!hasProfile)
-        {
-            Debug.Log("Profile not found.");
+//        if (!hasProfile)
+//        {
+//            Debug.Log("Profile not found.");
 
-            // Open participant details page
-            mainMenuManager.OpenProfile();
+//            // Open participant details page
+//            mainMenuManager.OpenProfile();
 
-            return;
-        }
+//            return;
+//        }
 
-        // Get the loaded profile
-        ProfileData profile =
-            ProfileManager.Instance.CurrentProfile;
+//        // Get the loaded profile
+//        ProfileData profile =
+//            ProfileManager.Instance.CurrentProfile;
 
-        // Create a new entry for this challenge
-        ParticipantData unfinished = await FirestoreEntryManager.Instance.GetUnfinishedEntry(accountID, challenge.challengeID);
+//        // Create a new entry for this challenge
+//        ParticipantData unfinished = await FirestoreEntryManager.Instance.GetUnfinishedEntry(accountID, challenge.challengeID);
 
-        if (unfinished != null)
-        {
-            ParticipantManager.Instance.CurrentParticipant = unfinished;
+//        if (unfinished != null)
+//        {
+//            ParticipantManager.Instance.CurrentParticipant = unfinished;
 
-            posterSystem.LoadParticipant();
+//            posterSystem.LoadParticipant();
 
-            mainMenuManager.OpenPrompt();
-        }
-        else
-        {
-            posterSystem.PrepareForNewChallenge();
+//            mainMenuManager.OpenPrompt();
+//        }
+//        else
+//        {
+//            posterSystem.PrepareForNewChallenge();
 
-            ParticipantManager.Instance.InitializeNewEntry(profile, challenge);
+//            ParticipantManager.Instance.InitializeNewEntry(profile, challenge);
 
-            mainMenuManager.OpenPrompt();
-        }
-    }
+//            mainMenuManager.OpenPrompt();
+//        }
+//    }
 
-    private IEnumerator HidePopupAfterDelay()
-    {
-        yield return new WaitForSeconds(4f);
+//    private IEnumerator HidePopupAfterDelay()
+//    {
+//        yield return new WaitForSeconds(4f);
 
-        posterSystem.HideLoading();
-    }
-}
+//        posterSystem.HideLoading();
+//    }
+//}

@@ -1,26 +1,26 @@
-﻿using TMPro;
-using UnityEngine;
+﻿//using TMPro;
+//using UnityEngine;
 
-public class LeaderboardItem : MonoBehaviour
-{
-    [Header("UI")]
+//public class LeaderboardItem : MonoBehaviour
+//{
+//    [Header("UI")]
 
-    public TMP_Text rankText;
-    public TMP_Text nameText;
-    public TMP_Text categoryText;
-    public TMP_Text institutionText;
-    public TMP_Text scoreText;
+//    public TMP_Text rankText;
+//    public TMP_Text nameText;
+//    public TMP_Text categoryText;
+//    public TMP_Text institutionText;
+//    public TMP_Text scoreText;
 
-    public void Setup(ParticipantData data, int rank)
-    {
-        rankText.text = rank.ToString();
+//    public void Setup(ParticipantData data, int rank)
+//    {
+//        rankText.text = rank.ToString();
 
-        nameText.text = data.participantName;
+//        nameText.text = data.participantName;
 
-        categoryText.text = data.categoryType;
+//        categoryText.text = data.categoryType;
 
-        institutionText.text = data.institution;
+//        institutionText.text = data.institution;
 
-        scoreText.text = data.score.ToString("0");
-    }
-}
+//        scoreText.text = data.score.ToString("0");
+//    }
+//}
