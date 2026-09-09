@@ -284,13 +284,21 @@ public class ParticipantData
     // =========================================================
     // POSTER CHECK
     // =========================================================
+    //
+    // A poster exists if either:
+    // - a runtime image URL exists, OR
+    // - a backend storagePath exists.
+    //
+    // The actual image is NOT stored in Firestore.
+    // =========================================================
 
     public bool HasPoster()
     {
         return
             !string.IsNullOrWhiteSpace(posterImageUrl) ||
             !string.IsNullOrWhiteSpace(revisedImageUrl) ||
-            !string.IsNullOrWhiteSpace(originalImageUrl);
+            !string.IsNullOrWhiteSpace(originalImageUrl) ||
+            !string.IsNullOrWhiteSpace(storagePath);
     }
 
 
@@ -302,7 +310,10 @@ public class ParticipantData
     {
         return
             revisionCount > 0 &&
-            !string.IsNullOrWhiteSpace(revisedImageUrl);
+            (
+                !string.IsNullOrWhiteSpace(revisedImageUrl) ||
+                !string.IsNullOrWhiteSpace(storagePath)
+            );
     }
 
 
@@ -354,6 +365,15 @@ public class ParticipantData
             return posterImageUrl;
 
         return originalImageUrl ?? "";
+    }
+
+    // =========================================================
+    // GET BACKEND STORAGE PATH
+    // =========================================================
+
+    public string GetStoragePath()
+    {
+        return storagePath ?? "";
     }
 
 

@@ -1,43 +1,31 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
+
 public class AIBackendManager : MonoBehaviour
 {
     public static AIBackendManager Instance { get; private set; }
-
 
     // =========================================================
     // BACKEND
     // =========================================================
 
     [Header("Backend Settings")]
-
     [SerializeField]
     private string backendUrl =
         "https://assistive-design-backend-506363853940.asia-southeast1.run.app";
-
 
     // =========================================================
     // STATE
     // =========================================================
 
-    public bool IsProcessing
-    {
-        get;
-        private set;
-    }
+    public bool IsProcessing { get; private set; }
 
-
-    public string LastError
-    {
-        get;
-        private set;
-    }
-
+    public string LastError { get; private set; }
 
     // =========================================================
     // UNITY
@@ -45,121 +33,99 @@ public class AIBackendManager : MonoBehaviour
 
     private void Awake()
     {
-        if (
-            Instance != null &&
-            Instance != this
-        )
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
-
             return;
         }
 
-
         Instance = this;
-
         DontDestroyOnLoad(gameObject);
     }
-
 
     // =========================================================
     // GENERATE POSTER
     // =========================================================
-    //
-    // POST:
-    //
-    // /generate-full-poster-image
-    //
-    // Used for:
-    //
-    // 1. Original poster
-    // 2. Revision 1
-    // 3. Revision 2
-    // 4. Revision 3
-    //
-    // =========================================================
 
-    public async Task<PosterResult>
-        GeneratePoster(
-            string userPrompt)
+    public async Task<PosterResult> GeneratePoster(
+    string userPrompt)
     {
         LastError = "";
 
-
-        if (
-            string.IsNullOrWhiteSpace(
-                userPrompt
-            )
-        )
+        if (string.IsNullOrWhiteSpace(userPrompt))
         {
-            SetError(
-                "Poster prompt is empty."
-            );
-
+            SetError("Poster prompt is empty.");
             return null;
         }
-
 
         string url =
             backendUrl +
             "/generate-full-poster-image";
 
-
         PosterImageRequest requestData =
             new PosterImageRequest
             {
-                userPrompt =
-                    userPrompt.Trim()
+                userPrompt = userPrompt.Trim()
             };
 
-
         string json =
-            JsonUtility.ToJson(
-                requestData
-            );
-
+            JsonUtility.ToJson(requestData);
 
         try
         {
             IsProcessing = true;
 
-
-            UnityWebRequest request =
+            using UnityWebRequest request =
                 CreatePostRequest(
                     url,
                     json
                 );
 
+            await SendRequestAsync(request);
 
-            await SendRequestAsync(
-                request
-            );
-
+            // =====================================================
+            // CHECK BACKEND RESPONSE
+            // =====================================================
 
             if (
                 request.result !=
                 UnityWebRequest.Result.Success
             )
             {
+                string errorDetails =
+                    request.error;
+
+                if (
+                    request.downloadHandler != null &&
+                    !string.IsNullOrWhiteSpace(
+                        request.downloadHandler.text
+                    )
+                )
+                {
+                    errorDetails +=
+                        " | Response: " +
+                        request.downloadHandler.text;
+                }
+
                 SetError(
                     "Poster generation failed: " +
-                    request.error
+                    errorDetails
                 );
-
 
                 Debug.LogError(
                     "AIBackendManager GeneratePoster: " +
-                    request.error
+                    errorDetails
                 );
-
 
                 return null;
             }
 
+            // =====================================================
+            // READ RESPONSE
+            // =====================================================
 
             string responseText =
                 request.downloadHandler.text;
-
 
             if (
                 string.IsNullOrWhiteSpace(
@@ -171,10 +137,12 @@ public class AIBackendManager : MonoBehaviour
                     "Poster API returned an empty response."
                 );
 
-
                 return null;
             }
 
+            Debug.Log(
+                "AIBackendManager: Poster API response received."
+            );
 
             FullPosterImageResponse response =
                 JsonUtility.FromJson<
@@ -183,32 +151,31 @@ public class AIBackendManager : MonoBehaviour
                     responseText
                 );
 
-
-            if (
-                response == null
-            )
+            if (response == null)
             {
                 SetError(
                     "Unable to read poster API response."
                 );
 
-
                 return null;
             }
 
+            // =====================================================
+            // SUCCESS
+            // =====================================================
 
-            if (
-                !response.success
-            )
+            if (!response.success)
             {
                 SetError(
                     "Poster generation was unsuccessful."
                 );
 
-
                 return null;
             }
 
+            // =====================================================
+            // IMAGE CHECK
+            // =====================================================
 
             if (
                 string.IsNullOrWhiteSpace(
@@ -217,38 +184,62 @@ public class AIBackendManager : MonoBehaviour
             )
             {
                 SetError(
-                    "Poster API did not return an image URL."
+                    "Poster API did not return an image."
                 );
-
 
                 return null;
             }
 
+            // =====================================================
+            // IMPORTANT
+            //
+            // DO NOT UPLOAD TO FIREBASE STORAGE.
+            //
+            // We return the image exactly as received
+            // from the backend.
+            // =====================================================
+
+            Debug.Log(
+                "AIBackendManager: Image received directly from backend."
+            );
+
+            Debug.Log(
+                "AIBackendManager: Image format = " +
+                (
+                    response.imageUrl.StartsWith(
+                        "data:image/",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                        ? "BASE64"
+                        : "URL"
+                )
+            );
+
+            // =====================================================
+            // RETURN RESULT
+            // =====================================================
 
             PosterResult result =
                 new PosterResult
                 {
-                    success =
-                        true,
+                    success = true,
 
                     imageUrl =
                         response.imageUrl,
 
                     storagePath =
-                        response.storagePath,
+                        response.storagePath ?? "",
 
                     mimeType =
-                        response.mimeType,
+                        response.mimeType ?? "",
 
                     promptUsed =
-                        response.promptUsed
+                        response.promptUsed ?? ""
                 };
-
 
             Debug.Log(
                 "AIBackendManager: Poster generated successfully."
             );
-
 
             return result;
         }
@@ -259,11 +250,9 @@ public class AIBackendManager : MonoBehaviour
                 exception.Message
             );
 
-
             Debug.LogException(
                 exception
             );
-
 
             return null;
         }
@@ -273,247 +262,165 @@ public class AIBackendManager : MonoBehaviour
         }
     }
 
-
     // =========================================================
     // DESCRIBE POSTER
     // =========================================================
-    //
-    // POST:
-    //
-    // /describe-generated-image
-    //
-    // =========================================================
 
-    public async Task<DescriptionResult>
-        DescribePoster(
-            string imageUrl)
+    public async Task<DescriptionResult> DescribePoster(
+        string imageUrl)
     {
         LastError = "";
 
-
-        if (
-            string.IsNullOrWhiteSpace(
-                imageUrl
-            )
-        )
+        if (string.IsNullOrWhiteSpace(imageUrl))
         {
-            SetError(
-                "Image URL is empty."
-            );
-
-
+            SetError("Image URL is empty.");
             return null;
         }
-
 
         string url =
             backendUrl +
             "/describe-generated-image";
 
-
         DescribeImageRequest requestData =
             new DescribeImageRequest
             {
-                imageUrl =
-                    imageUrl
+                imageUrl = imageUrl
             };
 
-
         string json =
-            JsonUtility.ToJson(
-                requestData
-            );
-
+            JsonUtility.ToJson(requestData);
 
         try
         {
             IsProcessing = true;
 
+            using UnityWebRequest request =
+                CreatePostRequest(url, json);
 
-            UnityWebRequest request =
-                CreatePostRequest(
-                    url,
-                    json
-                );
+            await SendRequestAsync(request);
 
-
-            await SendRequestAsync(
-                request
-            );
-
-
-            if (
-                request.result !=
-                UnityWebRequest.Result.Success
-            )
+            if (request.result !=
+                UnityWebRequest.Result.Success)
             {
                 SetError(
                     "Poster description failed: " +
                     request.error
                 );
 
-
-                Debug.LogError(
-                    "AIBackendManager DescribePoster: " +
-                    request.error
-                );
-
+                if (request.downloadHandler != null)
+                {
+                    Debug.LogError(
+                        request.downloadHandler.text
+                    );
+                }
 
                 return null;
             }
 
-
             string responseText =
                 request.downloadHandler.text;
 
-
-            if (
-                string.IsNullOrWhiteSpace(
-                    responseText
-                )
-            )
+            if (string.IsNullOrWhiteSpace(responseText))
             {
                 SetError(
                     "Description API returned an empty response."
                 );
 
-
                 return null;
             }
 
-
             DescribeImageResponse response =
-                JsonUtility.FromJson<
-                    DescribeImageResponse
-                >(
+                JsonUtility.FromJson<DescribeImageResponse>(
                     responseText
                 );
 
-
-            if (
-                response == null
-            )
+            if (response == null)
             {
                 SetError(
                     "Unable to read description API response."
                 );
 
-
                 return null;
             }
 
-
-            if (
-                !response.success
-            )
+            if (!response.success)
             {
                 SetError(
                     "Poster description was unsuccessful."
                 );
 
-
                 return null;
             }
 
+            string description = "";
 
-            string description =
-                "";
-
-
-            if (
-                response.description != null
-            )
+            if (response.description != null)
             {
                 description =
-                    response.description
-                        .detailedDescription;
+                    response.description.detailedDescription;
 
-
-                if (
-                    string.IsNullOrWhiteSpace(
-                        description
-                    )
-                )
+                if (string.IsNullOrWhiteSpace(description))
                 {
                     description =
-                        response.description
-                            .shortDescription;
+                        response.description.shortDescription;
                 }
             }
 
-
-            if (
-                string.IsNullOrWhiteSpace(
-                    description
-                )
-            )
+            if (string.IsNullOrWhiteSpace(description))
             {
                 SetError(
                     "No description was returned."
                 );
 
-
                 return null;
             }
-
 
             DescriptionResult result =
                 new DescriptionResult
                 {
-                    success =
-                        true,
+                    success = true,
 
-                    description =
-                        description,
+                    description = description,
 
                     shortDescription =
                         response.description != null
-                            ? response.description
-                                .shortDescription
+                            ? response.description.shortDescription
                             : "",
 
                     detailedDescription =
                         response.description != null
-                            ? response.description
-                                .detailedDescription
+                            ? response.description.detailedDescription
                             : "",
 
                     detectedText =
                         response.description != null
-                            ? response.description
-                                .detectedText
+                            ? response.description.detectedText
                             : "",
 
                     mainObjects =
                         response.description != null
-                            ? response.description
-                                .mainObjects
+                            ? response.description.mainObjects
                             : "",
 
                     colors =
                         response.description != null
-                            ? response.description
-                                .colors
+                            ? response.description.colors
                             : "",
 
                     layout =
                         response.description != null
-                            ? response.description
-                                .layout
+                            ? response.description.layout
                             : "",
 
                     message =
                         response.description != null
-                            ? response.description
-                                .message
+                            ? response.description.message
                             : ""
                 };
-
 
             Debug.Log(
                 "AIBackendManager: Poster description generated."
             );
-
 
             return result;
         }
@@ -524,11 +431,7 @@ public class AIBackendManager : MonoBehaviour
                 exception.Message
             );
 
-
-            Debug.LogException(
-                exception
-            );
-
+            Debug.LogException(exception);
 
             return null;
         }
@@ -538,102 +441,143 @@ public class AIBackendManager : MonoBehaviour
         }
     }
 
+    // =========================================================
+    // ENSURE IMAGE IS STORED
+    // =========================================================
+
+
 
     // =========================================================
     // DOWNLOAD IMAGE
     // =========================================================
-    //
-    // Downloads generated poster from the URL returned
-    // by the backend.
-    //
-    // =========================================================
 
-    public async Task<Texture2D>
-        DownloadImage(
-            string imageUrl)
+    public async Task<Texture2D> DownloadImage(
+        string imageUrl)
     {
         LastError = "";
 
-
-        if (
-            string.IsNullOrWhiteSpace(
-                imageUrl
-            )
-        )
+        if (string.IsNullOrWhiteSpace(imageUrl))
         {
-            SetError(
-                "Image URL is empty."
-            );
-
-
+            SetError("Image URL is empty.");
             return null;
         }
-
 
         try
         {
             IsProcessing = true;
 
+            // -------------------------------------------------
+            // BASE64
+            // -------------------------------------------------
 
-            using UnityWebRequest request =
-                UnityWebRequestTexture
-                    .GetTexture(
-                        imageUrl
+            if (imageUrl.StartsWith(
+                    "data:image/",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                int commaIndex =
+                    imageUrl.IndexOf(',');
+
+                if (commaIndex < 0)
+                {
+                    SetError(
+                        "Invalid Base64 image data."
                     );
 
+                    return null;
+                }
 
-            await SendRequestAsync(
-                request
-            );
+                string base64Data =
+                    imageUrl.Substring(
+                        commaIndex + 1
+                    );
 
+                if (string.IsNullOrWhiteSpace(base64Data))
+                {
+                    SetError(
+                        "Base64 image data is empty."
+                    );
 
-            if (
-                request.result !=
-                UnityWebRequest.Result.Success
-            )
+                    return null;
+                }
+
+                byte[] imageBytes =
+                    Convert.FromBase64String(
+                        base64Data
+                    );
+
+                Texture2D texture =
+                    new Texture2D(
+                        2,
+                        2,
+                        TextureFormat.RGBA32,
+                        false
+                    );
+
+                bool loaded =
+                    texture.LoadImage(imageBytes);
+
+                if (!loaded)
+                {
+                    Destroy(texture);
+
+                    SetError(
+                        "Unable to decode generated poster image."
+                    );
+
+                    return null;
+                }
+
+                return texture;
+            }
+
+            // -------------------------------------------------
+            // NORMAL URL
+            // -------------------------------------------------
+
+            using UnityWebRequest request =
+                UnityWebRequestTexture.GetTexture(
+                    imageUrl
+                );
+
+            await SendRequestAsync(request);
+
+            if (request.result !=
+                UnityWebRequest.Result.Success)
             {
                 SetError(
                     "Image download failed: " +
                     request.error
                 );
 
-
-                Debug.LogError(
-                    "AIBackendManager DownloadImage: " +
-                    request.error
-                );
-
-
                 return null;
             }
 
+            Texture2D downloadedTexture =
+                DownloadHandlerTexture.GetContent(
+                    request
+                );
 
-            Texture2D texture =
-                DownloadHandlerTexture
-                    .GetContent(
-                        request
-                    );
-
-
-            if (
-                texture == null
-            )
+            if (downloadedTexture == null)
             {
                 SetError(
                     "Downloaded image is empty."
                 );
 
-
                 return null;
             }
 
-
-            Debug.Log(
-                "AIBackendManager: Image downloaded successfully."
+            return downloadedTexture;
+        }
+        catch (FormatException exception)
+        {
+            SetError(
+                "Invalid Base64 image data: " +
+                exception.Message
             );
 
+            Debug.LogException(exception);
 
-            return texture;
+            return null;
         }
         catch (Exception exception)
         {
@@ -642,11 +586,139 @@ public class AIBackendManager : MonoBehaviour
                 exception.Message
             );
 
+            Debug.LogException(exception);
+
+            return null;
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    // =========================================================
+    // DOWNLOAD STORED IMAGE
+    // =========================================================
+    //
+    // Downloads a previously generated image using the
+    // storagePath returned by the backend.
+    //
+    // IMPORTANT:
+    // This does NOT use Firebase Storage.
+    // The image remains hosted by the AI backend.
+    //
+
+    public async Task<Texture2D> DownloadStoredImage(
+        string storagePath)
+    {
+        LastError = "";
+
+        if (string.IsNullOrWhiteSpace(storagePath))
+        {
+            SetError(
+                "Storage path is empty."
+            );
+
+            return null;
+        }
+
+        string path =
+            storagePath.Trim();
+
+        try
+        {
+            IsProcessing = true;
+
+            // -------------------------------------------------
+            // If backend already returned a full URL
+            // -------------------------------------------------
+
+            string imageUrl;
+
+            if (
+                path.StartsWith(
+                    "http://",
+                    StringComparison.OrdinalIgnoreCase
+                ) ||
+                path.StartsWith(
+                    "https://",
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                imageUrl = path;
+            }
+            else
+            {
+                // -------------------------------------------------
+                // Convert storage path into backend image URL
+                // -------------------------------------------------
+
+                imageUrl =
+                    backendUrl.TrimEnd('/') +
+                    "/generated-images/" +
+                    path.TrimStart('/');
+            }
+
+            Debug.Log(
+                "AIBackendManager: Downloading stored image: " +
+                imageUrl
+            );
+
+            using UnityWebRequest request =
+                UnityWebRequestTexture.GetTexture(
+                    imageUrl
+                );
+
+            await SendRequestAsync(request);
+
+            if (
+                request.result !=
+                UnityWebRequest.Result.Success
+            )
+            {
+                SetError(
+                    "Stored image download failed: " +
+                    request.error
+                );
+
+                Debug.LogError(
+                    "AIBackendManager: Stored image download failed. " +
+                    "HTTP = " +
+                    request.responseCode +
+                    " | URL = " +
+                    imageUrl
+                );
+
+                return null;
+            }
+
+            Texture2D texture =
+                DownloadHandlerTexture.GetContent(
+                    request
+                );
+
+            if (texture == null)
+            {
+                SetError(
+                    "Stored image is empty."
+                );
+
+                return null;
+            }
+
+            return texture;
+        }
+        catch (Exception exception)
+        {
+            SetError(
+                "Stored image download exception: " +
+                exception.Message
+            );
 
             Debug.LogException(
                 exception
             );
-
 
             return null;
         }
@@ -657,113 +729,87 @@ public class AIBackendManager : MonoBehaviour
     }
 
 
+    private bool IsRateLimitResponse(
+    UnityWebRequest request)
+    {
+        if (request == null)
+            return false;
+
+        // Direct HTTP 429
+        if (request.responseCode == 429)
+            return true;
+
+        // Your backend currently appears
+        // to convert Vertex 429 into HTTP 500.
+        if (request.responseCode == 500 &&
+            request.downloadHandler != null)
+        {
+            string body =
+                request.downloadHandler.text ?? "";
+
+            if (body.Contains("\"code\":429") ||
+                body.Contains("\"code\": 429") ||
+                body.Contains("Too Many Requests") ||
+                body.Contains("Resource exhausted"))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // =========================================================
     // SCORE POSTER
     // =========================================================
-    //
-    // POST:
-    //
-    // /score-full-poster
-    //
-    // Scoring:
-    //
-    // Prompt Quality              20
-    // Poster Message & Content    20
-    // Design Quality              20
-    // Accessibility Understanding 20
-    // Final Design Justification  20
-    //
-    // Final Design Justification:
-    //
-    // Revision Process + Final Explanation
-    //
-    // =========================================================
 
-    public async Task<ScoreResult>
-        ScorePoster(
-            ScoreRequestData requestData)
+    public async Task<ScoreResult> ScorePoster(
+        ScoreRequestData requestData)
     {
         LastError = "";
 
-
-        if (
-            requestData == null
-        )
+        if (requestData == null)
         {
             SetError(
                 "Score request is null."
             );
 
-
             return null;
         }
 
-
-        // -----------------------------------------------------
-        // VALIDATE PROMPT
-        // -----------------------------------------------------
-
-        if (
-            string.IsNullOrWhiteSpace(
-                requestData.userPrompt
-            )
-        )
+        if (string.IsNullOrWhiteSpace(
+                requestData.userPrompt))
         {
             SetError(
                 "Original design prompt is empty."
             );
 
-
             return null;
         }
 
-
-        // -----------------------------------------------------
-        // VALIDATE IMAGE
-        // -----------------------------------------------------
-
-        if (
-            string.IsNullOrWhiteSpace(
-                requestData.imageUrl
-            )
-        )
+        if (string.IsNullOrWhiteSpace(
+                requestData.imageUrl))
         {
             SetError(
                 "Final poster image is missing."
             );
 
-
             return null;
         }
 
-
-        // -----------------------------------------------------
-        // VALIDATE FINAL EXPLANATION
-        // -----------------------------------------------------
-
-        if (
-            string.IsNullOrWhiteSpace(
-                requestData.finalExplanation
-            )
-        )
+        if (string.IsNullOrWhiteSpace(
+                requestData.finalExplanation))
         {
             SetError(
                 "Final explanation is empty."
             );
 
-
             return null;
         }
-
-
-        // -----------------------------------------------------
-        // URL
-        // -----------------------------------------------------
 
         string url =
             backendUrl +
             "/score-full-poster";
-
 
         ScoreApiRequest apiRequest =
             new ScoreApiRequest
@@ -787,157 +833,163 @@ public class AIBackendManager : MonoBehaviour
                     requestData.finalExplanation
             };
 
-
         string json =
-            JsonUtility.ToJson(
-                apiRequest
-            );
-
+            JsonUtility.ToJson(apiRequest);
 
         try
         {
             IsProcessing = true;
 
+            const int maxAttempts = 3;
 
-            UnityWebRequest request =
-                CreatePostRequest(
-                    url,
-                    json
+            for (int attempt = 1;
+                 attempt <= maxAttempts;
+                 attempt++)
+            {
+                using UnityWebRequest request =
+                    CreatePostRequest(
+                        url,
+                        json
+                    );
+
+                await SendRequestAsync(request);
+
+                // =================================================
+                // SUCCESS
+                // =================================================
+
+                if (request.result ==
+                    UnityWebRequest.Result.Success)
+                {
+                    string responseText =
+                        request.downloadHandler != null
+                            ? request.downloadHandler.text
+                            : "";
+
+                    if (string.IsNullOrWhiteSpace(
+                        responseText))
+                    {
+                        SetError(
+                            "Score API returned an empty response."
+                        );
+
+                        return null;
+                    }
+
+                    ScoreApiResponse response =
+                        JsonUtility.FromJson<ScoreApiResponse>(
+                            responseText
+                        );
+
+                    if (response == null)
+                    {
+                        SetError(
+                            "Unable to read score API response."
+                        );
+
+                        return null;
+                    }
+
+                    if (!response.success)
+                    {
+                        SetError(
+                            "AI evaluation was unsuccessful."
+                        );
+
+                        return null;
+                    }
+
+                    if (response.score == null)
+                    {
+                        SetError(
+                            "Score breakdown was not returned."
+                        );
+
+                        return null;
+                    }
+
+                    NormalizeScore(response.score);
+
+                    return new ScoreResult
+                    {
+                        success = true,
+                        score = response.score
+                    };
+                }
+
+                // =================================================
+                // ERROR
+                // =================================================
+
+                bool rateLimited =
+                    IsRateLimitResponse(request);
+
+                string responseBody =
+                    request.downloadHandler != null
+                        ? request.downloadHandler.text
+                        : "";
+
+                Debug.LogWarning(
+                    "AIBackendManager: Score attempt " +
+                    attempt +
+                    "/" +
+                    maxAttempts +
+                    " failed. HTTP " +
+                    request.responseCode +
+                    " | " +
+                    request.error
                 );
 
+                if (!string.IsNullOrWhiteSpace(
+                    responseBody))
+                {
+                    Debug.LogWarning(
+                        "Score API response: " +
+                        responseBody
+                    );
+                }
 
-            await SendRequestAsync(
-                request
-            );
+                // =================================================
+                // RETRY ONLY RATE LIMITS
+                // =================================================
 
+                if (rateLimited &&
+                    attempt < maxAttempts)
+                {
+                    int delaySeconds =
+                        attempt == 1 ? 3 : 6;
 
-            if (
-                request.result !=
-                UnityWebRequest.Result.Success
-            )
-            {
+                    Debug.LogWarning(
+                        "Vertex AI is temporarily busy. " +
+                        "Retrying score request in " +
+                        delaySeconds +
+                        " seconds."
+                    );
+
+                    await Task.Delay(
+                        delaySeconds * 1000
+                    );
+
+                    continue;
+                }
+
+                // =================================================
+                // FINAL FAILURE
+                // =================================================
+
                 SetError(
                     "Score API failed: " +
                     request.error
                 );
 
-
-                Debug.LogError(
-                    "AIBackendManager ScorePoster: " +
-                    request.error
-                );
-
-
-                Debug.LogError(
-                    request.downloadHandler != null
-                        ? request.downloadHandler.text
-                        : ""
-                );
-
-
                 return null;
             }
 
-
-            string responseText =
-                request.downloadHandler.text;
-
-
-            if (
-                string.IsNullOrWhiteSpace(
-                    responseText
-                )
-            )
-            {
-                SetError(
-                    "Score API returned an empty response."
-                );
-
-
-                return null;
-            }
-
-
-            ScoreApiResponse response =
-                JsonUtility.FromJson<
-                    ScoreApiResponse
-                >(
-                    responseText
-                );
-
-
-            if (
-                response == null
-            )
-            {
-                SetError(
-                    "Unable to read score API response."
-                );
-
-
-                return null;
-            }
-
-
-            if (
-                !response.success
-            )
-            {
-                SetError(
-                    "AI evaluation was unsuccessful."
-                );
-
-
-                return null;
-            }
-
-
-            if (
-                response.score == null
-            )
-            {
-                SetError(
-                    "Score breakdown was not returned."
-                );
-
-
-                return null;
-            }
-
-
-            // -------------------------------------------------
-            // NORMALIZE SCORE
-            // -------------------------------------------------
-
-            NormalizeScore(
-                response.score
+            SetError(
+                "Score API failed after all retry attempts."
             );
 
-
-            ScoreResult result =
-                new ScoreResult
-                {
-                    success =
-                        true,
-
-                    score =
-                        response.score
-                };
-
-
-            Debug.Log(
-                "AIBackendManager: Evaluation completed."
-            );
-
-
-            Debug.Log(
-                "Total Score = " +
-                response.score.total +
-                "/100"
-            );
-
-
-            return result;
+            return null;
         }
         catch (Exception exception)
         {
@@ -946,11 +998,7 @@ public class AIBackendManager : MonoBehaviour
                 exception.Message
             );
 
-
-            Debug.LogException(
-                exception
-            );
-
+            Debug.LogException(exception);
 
             return null;
         }
@@ -960,38 +1008,15 @@ public class AIBackendManager : MonoBehaviour
         }
     }
 
-
     // =========================================================
     // NORMALIZE SCORE
-    // =========================================================
-    //
-    // The backend may return:
-    //
-    // revisionProcess = 12
-    // finalExplanation = 8
-    //
-    // We combine them:
-    //
-    // 12 + 8 = 20
-    //
-    // But the backend response still keeps the two values
-    // internally.
-    //
-    // DesignManager displays only:
-    //
-    // Final Design Justification
-    // 20 / 20
-    //
     // =========================================================
 
     private void NormalizeScore(
         ScoreBreakdown score)
     {
         if (score == null)
-        {
             return;
-        }
-
 
         score.promptQuality =
             Mathf.Clamp(
@@ -1000,14 +1025,12 @@ public class AIBackendManager : MonoBehaviour
                 20
             );
 
-
         score.posterMessage =
             Mathf.Clamp(
                 score.posterMessage,
                 0,
                 20
             );
-
 
         score.designQuality =
             Mathf.Clamp(
@@ -1016,14 +1039,12 @@ public class AIBackendManager : MonoBehaviour
                 20
             );
 
-
         score.accessibilityUnderstanding =
             Mathf.Clamp(
                 score.accessibilityUnderstanding,
                 0,
                 20
             );
-
 
         score.revisionProcess =
             Mathf.Clamp(
@@ -1032,7 +1053,6 @@ public class AIBackendManager : MonoBehaviour
                 10
             );
 
-
         score.finalExplanation =
             Mathf.Clamp(
                 score.finalExplanation,
@@ -1040,15 +1060,9 @@ public class AIBackendManager : MonoBehaviour
                 10
             );
 
-
-        // -----------------------------------------------------
-        // FINAL DESIGN JUSTIFICATION
-        // -----------------------------------------------------
-
         int finalDesignJustification =
             score.revisionProcess +
             score.finalExplanation;
-
 
         finalDesignJustification =
             Mathf.Clamp(
@@ -1057,22 +1071,12 @@ public class AIBackendManager : MonoBehaviour
                 20
             );
 
-
-        // -----------------------------------------------------
-        // TOTAL
-        // -----------------------------------------------------
-
         score.total =
             score.promptQuality +
-
             score.posterMessage +
-
             score.designQuality +
-
             score.accessibilityUnderstanding +
-
             finalDesignJustification;
-
 
         score.total =
             Mathf.Clamp(
@@ -1082,15 +1086,13 @@ public class AIBackendManager : MonoBehaviour
             );
     }
 
-
     // =========================================================
-    // CREATE POST REQUEST
+    // HTTP
     // =========================================================
 
-    private UnityWebRequest
-        CreatePostRequest(
-            string url,
-            string json)
+    private UnityWebRequest CreatePostRequest(
+        string url,
+        string json)
     {
         UnityWebRequest request =
             new UnityWebRequest(
@@ -1098,59 +1100,37 @@ public class AIBackendManager : MonoBehaviour
                 UnityWebRequest.kHttpVerbPOST
             );
 
-
         byte[] bodyRaw =
-            Encoding.UTF8.GetBytes(
-                json
-            );
-
+            Encoding.UTF8.GetBytes(json);
 
         request.uploadHandler =
-            new UploadHandlerRaw(
-                bodyRaw
-            );
-
+            new UploadHandlerRaw(bodyRaw);
 
         request.downloadHandler =
             new DownloadHandlerBuffer();
-
 
         request.SetRequestHeader(
             "Content-Type",
             "application/json"
         );
 
-
         request.SetRequestHeader(
             "Accept",
             "application/json"
         );
 
+        // Prevent the Unity request from hanging forever.
+        request.timeout = 120;
 
         return request;
     }
 
-
-    // =========================================================
-    // ASYNC UNITY WEB REQUEST
-    // =========================================================
-    //
-    // UnityWebRequest does not directly behave like a normal
-    // Task in every Unity version.
-    //
-    // This method bridges Unity coroutine execution into
-    // async/await.
-    //
-    // =========================================================
-
-    private Task
-        SendRequestAsync(
-            UnityWebRequest request)
+    private Task SendRequestAsync(
+        UnityWebRequest request)
     {
         TaskCompletionSource<bool>
             completionSource =
             new TaskCompletionSource<bool>();
-
 
         StartCoroutine(
             SendRequestCoroutine(
@@ -1159,39 +1139,26 @@ public class AIBackendManager : MonoBehaviour
             )
         );
 
-
         return completionSource.Task;
     }
 
-
-    private IEnumerator
-        SendRequestCoroutine(
-            UnityWebRequest request,
-            TaskCompletionSource<bool>
-                completionSource)
+    private IEnumerator SendRequestCoroutine(
+        UnityWebRequest request,
+        TaskCompletionSource<bool>
+            completionSource)
     {
         yield return request.SendWebRequest();
 
-
-        completionSource.TrySetResult(
-            true
-        );
-
-
-        request.Dispose();
+        completionSource.TrySetResult(true);
     }
-
 
     // =========================================================
     // ERROR
     // =========================================================
 
-    private void SetError(
-        string message)
+    private void SetError(string message)
     {
-        LastError =
-            message;
-
+        LastError = message;
 
         Debug.LogError(
             "AIBackendManager: " +
@@ -1199,9 +1166,8 @@ public class AIBackendManager : MonoBehaviour
         );
     }
 
-
     // =========================================================
-    // GET BACKEND URL
+    // BACKEND URL
     // =========================================================
 
     public string GetBackendUrl()
@@ -1209,31 +1175,17 @@ public class AIBackendManager : MonoBehaviour
         return backendUrl;
     }
 
-
-    // =========================================================
-    // SET BACKEND URL
-    // =========================================================
-
-    public void SetBackendUrl(
-        string url)
+    public void SetBackendUrl(string url)
     {
-        if (
-            string.IsNullOrWhiteSpace(
-                url
-            )
-        )
-        {
+        if (string.IsNullOrWhiteSpace(url))
             return;
-        }
-
 
         backendUrl =
             url.Trim().TrimEnd('/');
     }
 
-
     // =========================================================
-    // DATA - POSTER REQUEST
+    // DATA
     // =========================================================
 
     [Serializable]
@@ -1242,48 +1194,25 @@ public class AIBackendManager : MonoBehaviour
         public string userPrompt;
     }
 
-
-    // =========================================================
-    // DATA - POSTER RESPONSE
-    // =========================================================
-
     [Serializable]
     public class FullPosterImageResponse
     {
         public bool success;
-
         public string imageUrl;
-
         public string storagePath;
-
         public string mimeType;
-
         public string promptUsed;
     }
-
-
-    // =========================================================
-    // DATA - POSTER RESULT
-    // =========================================================
 
     [Serializable]
     public class PosterResult
     {
         public bool success;
-
         public string imageUrl;
-
         public string storagePath;
-
         public string mimeType;
-
         public string promptUsed;
     }
-
-
-    // =========================================================
-    // DATA - DESCRIPTION REQUEST
-    // =========================================================
 
     [Serializable]
     public class DescribeImageRequest
@@ -1291,198 +1220,90 @@ public class AIBackendManager : MonoBehaviour
         public string imageUrl;
     }
 
-
-    // =========================================================
-    // DATA - DESCRIPTION RESPONSE
-    // =========================================================
-
     [Serializable]
     public class DescribeImageResponse
     {
         public bool success;
-
         public ImageDescription description;
     }
-
-
-    // =========================================================
-    // DATA - IMAGE DESCRIPTION
-    // =========================================================
 
     [Serializable]
     public class ImageDescription
     {
         public string shortDescription;
-
         public string detailedDescription;
-
         public string detectedText;
-
         public string mainObjects;
-
         public string colors;
-
         public string layout;
-
         public string message;
     }
-
-
-    // =========================================================
-    // DATA - DESCRIPTION RESULT
-    // =========================================================
 
     [Serializable]
     public class DescriptionResult
     {
         public bool success;
-
         public string description;
-
         public string shortDescription;
-
         public string detailedDescription;
-
         public string detectedText;
-
         public string mainObjects;
-
         public string colors;
-
         public string layout;
-
         public string message;
     }
-
-
-    // =========================================================
-    // DATA - SCORE REQUEST FROM DESIGN MANAGER
-    // =========================================================
 
     [Serializable]
     public class ScoreRequestData
     {
         public string userPrompt;
-
         public string imageUrl;
-
         public string revisionPrompt;
-
         public string revisionHistory;
-
         public int revisionCount;
-
         public string finalExplanation;
     }
-
-
-    // =========================================================
-    // DATA - SCORE API REQUEST
-    // =========================================================
 
     [Serializable]
     private class ScoreApiRequest
     {
         public string userPrompt;
-
         public string imageUrl;
-
         public string revisionPrompt;
-
         public string revisionHistory;
-
         public int revisionCount;
-
         public string finalExplanation;
     }
 
-
-    // =========================================================
-    // DATA - SCORE API RESPONSE
-    // =========================================================
 
     [Serializable]
     private class ScoreApiResponse
     {
         public bool success;
-
         public ScoreBreakdown score;
     }
-
-
-    // =========================================================
-    // DATA - SCORE RESULT
-    // =========================================================
 
     [Serializable]
     public class ScoreResult
     {
         public bool success;
-
         public ScoreBreakdown score;
     }
-
-
-    // =========================================================
-    // DATA - SCORE BREAKDOWN
-    // =========================================================
 
     [Serializable]
     public class ScoreBreakdown
     {
-        // -----------------------------------------------------
-        // 20 MARKS
-        // -----------------------------------------------------
-
         public int promptQuality;
-
-        // -----------------------------------------------------
-        // 20 MARKS
-        // -----------------------------------------------------
-
         public int posterMessage;
-
-        // -----------------------------------------------------
-        // 20 MARKS
-        // -----------------------------------------------------
-
         public int designQuality;
-
-        // -----------------------------------------------------
-        // 20 MARKS
-        // -----------------------------------------------------
-
         public int accessibilityUnderstanding;
 
-        // -----------------------------------------------------
-        // FINAL 20 MARKS
-        //
-        // Internally:
-        //
-        // revisionProcess = 0 - 10
-        // finalExplanation = 0 - 10
-        //
-        // Combined:
-        //
-        // 0 - 20
-        // -----------------------------------------------------
-
         public int revisionProcess;
-
         public int finalExplanation;
-
-        // -----------------------------------------------------
-        // TOTAL
-        // -----------------------------------------------------
 
         public int total;
 
-        // -----------------------------------------------------
-        // FEEDBACK
-        // -----------------------------------------------------
-
         public string feedback;
-
         public string improvementSuggestion;
     }
 }

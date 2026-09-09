@@ -7,6 +7,7 @@ public class VoiceInputManager : MonoBehaviour
 {
     [Header("UI")]
     public TMP_Text recordingStatusText;
+    public GameObject voiceLoadingPanel;
 
     [Header("Audio")]
     public AudioSource audioSource;
@@ -37,13 +38,16 @@ public class VoiceInputManager : MonoBehaviour
 
         SpeechRecognizer.RequestAccess();
 
-        // Choose ONE language
-        //SpeechRecognizer.SetDetectionLanguage("en-US");
         SpeechRecognizer.SetDetectionLanguage("ms-MY");
 
         if (recordingStatusText != null)
         {
             recordingStatusText.text = "Ready";
+        }
+
+        if (voiceLoadingPanel != null)
+        {
+            voiceLoadingPanel.SetActive(false);
         }
     }
 
@@ -77,11 +81,18 @@ public class VoiceInputManager : MonoBehaviour
 
         AndroidTTS.StopSpeaking();
 
+        if (voiceLoadingPanel != null)
+        {
+            voiceLoadingPanel.SetActive(true);
+        }
+
         if (audioSource != null && startBeep != null)
             audioSource.PlayOneShot(startBeep);
 
-        recordingStatusText.text =
-            "Listening...";
+        if (recordingStatusText != null)
+        {
+            recordingStatusText.text = "Listening...";
+        }
 
         SpeechRecognizer.StartRecording(false);
 
@@ -94,10 +105,17 @@ public class VoiceInputManager : MonoBehaviour
     {
         isRecording = false;
 
+        if (voiceLoadingPanel != null)
+        {
+            voiceLoadingPanel.SetActive(false);
+        }
+
         if (string.IsNullOrEmpty(result))
         {
-            recordingStatusText.text =
-                "No speech detected";
+            if (recordingStatusText != null)
+            {
+                recordingStatusText.text = "No speech detected";
+            }
 
             AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(
                 "No speech detected. Please try again."
@@ -111,8 +129,10 @@ public class VoiceInputManager : MonoBehaviour
             currentInput.text = result;
         }
 
-        recordingStatusText.text =
-            "Voice input completed";
+        if (recordingStatusText != null)
+        {
+            recordingStatusText.text = "Voice input completed";
+        }
 
         StartCoroutine(ReadResult(result));
     }

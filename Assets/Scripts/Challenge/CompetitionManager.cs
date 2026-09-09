@@ -849,6 +849,8 @@ public class CompetitionManager : MonoBehaviour
                     );
 
 
+
+
             if (!challengeStarted)
             {
                 SetError(
@@ -870,6 +872,56 @@ public class CompetitionManager : MonoBehaviour
 
 
                 return;
+            }
+
+            // =====================================================
+            // LEAVE PRACTICE MODE
+            // =====================================================
+
+            if (PracticeManager.Instance != null &&
+                PracticeManager.Instance.IsPracticeMode)
+            {
+                PracticeManager.Instance.ClearPractice();
+            }
+
+            // =====================================================
+            // FORCE COMPETITION MODE
+            // =====================================================
+
+            if (DesignManager.Instance != null)
+            {
+                DesignManager.Instance.SetDesignMode(
+                    DesignMode.Competition
+                );
+            }
+
+            // -------------------------------------------------
+            // SWITCH FROM PRACTICE → COMPETITION
+            // -------------------------------------------------
+
+            if (
+                PracticeManager.Instance != null &&
+                PracticeManager.Instance.IsPracticeMode
+            )
+            {
+                PracticeManager.Instance.ClearPractice();
+
+                Debug.Log(
+                    "CompetitionManager: Practice mode cleared."
+                );
+            }
+
+            if (
+                DesignManager.Instance != null
+            )
+            {
+                DesignManager.Instance.SetDesignMode(
+                    DesignMode.Competition
+                );
+
+                Debug.Log(
+                    "CompetitionManager: Switched to Competition Mode."
+                );
             }
 
 

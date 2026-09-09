@@ -16,6 +16,8 @@ public class DesignManager : MonoBehaviour
 {
     public static DesignManager Instance { get; private set; }
 
+
+
     // =========================================================
     // AI BACKEND
     // =========================================================
@@ -179,7 +181,7 @@ public class DesignManager : MonoBehaviour
 
     // Compatibility property.
     // Internally the real value is ParticipantData.isSubmitted.
-    
+
 
     private bool originalPosterGenerated;
     private bool scoreCalculated;
@@ -192,6 +194,21 @@ public class DesignManager : MonoBehaviour
     public string OriginalPrompt { get; private set; }
 
     public string CurrentPosterUrl { get; private set; }
+
+    // =========================================================
+    // IN-MEMORY POSTER URLs
+    // =========================================================
+    //
+    // IMPORTANT:
+    // Generated images are Base64 strings when Firebase Storage
+    // is not being used.
+    //
+    // NEVER save these values into Firestore.
+    // They only exist during the current Unity session.
+    //
+
+    private string currentOriginalPosterUrl = "";
+    private string currentLatestPosterUrl = "";
 
     public string CurrentPosterDescription { get; private set; }
 
@@ -356,6 +373,7 @@ public class DesignManager : MonoBehaviour
 
         Instance = this;
 
+
         CurrentMode =
             DesignMode.Competition;
     }
@@ -410,6 +428,10 @@ public class DesignManager : MonoBehaviour
 
         LoadParticipantState();
 
+        // Make sure Sample Prompt starts hidden
+        // in Competition Mode.
+        UpdateSamplePromptButton();
+
         UpdateAllButtonStates();
     }
 
@@ -432,22 +454,45 @@ public class DesignManager : MonoBehaviour
 
     private void LoadParticipantData()
     {
+        _ = LoadParticipantDataAsync();
+    }
+
+
+    public async Task RestoreCurrentSubmissionPosterAsync()
+    {
+        if (ParticipantManager.Instance == null)
+            return;
+
         ParticipantData data =
             ParticipantManager.Instance.CurrentParticipant;
 
         if (data == null)
             return;
 
+        await RestoreSavedPostersAsync(data);
+
+        UpdateAllButtonStates();
+    }
+
+
+    private async Task LoadParticipantDataAsync()
+    {
+        ParticipantData data =
+            ParticipantManager.Instance.CurrentParticipant;
+
+        if (data == null)
+            return;
 
         // -----------------------------------------------------
         // PROMPT
         // -----------------------------------------------------
 
-        OriginalPrompt = data.prompt ?? "";
+        OriginalPrompt =
+            data.prompt ?? "";
 
         if (promptInput != null)
-            promptInput.text = OriginalPrompt;
-
+            promptInput.text =
+                OriginalPrompt;
 
         // -----------------------------------------------------
         // SUBMISSION STATE
@@ -456,15 +501,19 @@ public class DesignManager : MonoBehaviour
         scoreCalculated =
             data.HasScore();
 
-        originalPosterGenerated =
-            !string.IsNullOrWhiteSpace(data.originalImageUrl);
-
-
         // IMPORTANT:
-        // New system uses isSubmitted.
-        bool submitted =
-            data.isSubmitted;
+        // Do NOT use data.originalImageUrl to determine whether
+        // a poster exists.
+        //
+        // Images are no longer stored in Firestore.
 
+        originalPosterGenerated =
+            !string.IsNullOrWhiteSpace(
+                currentOriginalPosterUrl
+            );
+
+        submittedViewMode =
+            data.isSubmitted;
 
         // -----------------------------------------------------
         // REVISION
@@ -477,27 +526,30 @@ public class DesignManager : MonoBehaviour
                 MAX_REVISION_COUNT
             );
 
-
         LastRevisionPrompt =
             data.revisionPrompt ?? "";
 
-
         // -----------------------------------------------------
-        // LOAD REVISION HISTORY
+        // REVISION HISTORY
         // -----------------------------------------------------
 
         LoadRevisionHistory(
             data.revisionHistory
         );
 
-
         // -----------------------------------------------------
-        // LATEST POSTER
+        // POSTER RESTORE
         // -----------------------------------------------------
+        //
+        // The main submission document contains metadata only.
+        // Restore the actual poster from local/Firestore poster
+        // storage, with backend storagePath as a legacy fallback.
+        //
 
-        CurrentPosterUrl =
-            data.GetLatestPosterUrl();
-
+        if (!IsPracticeMode())
+        {
+            await RestoreSavedPostersAsync(data);
+        }
 
         // -----------------------------------------------------
         // DESCRIPTION
@@ -510,7 +562,6 @@ public class DesignManager : MonoBehaviour
             descriptionText.text =
                 CurrentPosterDescription;
 
-
         // -----------------------------------------------------
         // FINAL EXPLANATION
         // -----------------------------------------------------
@@ -521,13 +572,11 @@ public class DesignManager : MonoBehaviour
                 data.finalExplanation ?? "";
         }
 
-
         // -----------------------------------------------------
         // SCORE
         // -----------------------------------------------------
 
         UpdateScoreUIFromData(data);
-
 
         // -----------------------------------------------------
         // FEEDBACK
@@ -541,16 +590,232 @@ public class DesignManager : MonoBehaviour
             improvementSuggestionText.text =
                 data.improvementSuggestion ?? "";
 
-
         UpdateRevisionCounter();
 
         Debug.Log(
             "DesignManager: Participant state loaded. " +
             "Submitted = " +
-            submitted
+            data.isSubmitted +
+            " | Poster restore enabled = true"
         );
 
         UpdateAllButtonStates();
+    }
+
+
+
+    private async Task RestoreSavedPostersAsync(
+        ParticipantData data)
+    {
+        if (data == null ||
+            ParticipantManager.Instance == null)
+        {
+            return;
+        }
+
+        string submissionID =
+            data.submissionID ?? "";
+
+        if (string.IsNullOrWhiteSpace(submissionID))
+            return;
+
+        Texture2D originalTexture =
+            await PosterStorage.LoadAsync(
+                submissionID,
+                "original"
+            );
+
+        Texture2D latestTexture =
+            await PosterStorage.LoadAsync(
+                submissionID,
+                "latest"
+            );
+
+        // -----------------------------------------------------
+        // BACKEND STORAGE FALLBACK
+        // -----------------------------------------------------
+
+        if (latestTexture == null &&
+            !string.IsNullOrWhiteSpace(data.storagePath))
+        {
+            latestTexture =
+                await DownloadStoredPosterTexture(
+                    data.storagePath
+                );
+        }
+
+        if (originalTexture == null &&
+            latestTexture != null &&
+            data.revisionCount <= 0)
+        {
+            originalTexture =
+                latestTexture;
+        }
+
+        // -----------------------------------------------------
+        // RESTORE ORIGINAL
+        // -----------------------------------------------------
+
+        if (originalTexture != null)
+        {
+            currentOriginalPosterUrl =
+                TextureToDataUrl(originalTexture);
+
+            if (data.revisionCount <= 0)
+            {
+                currentLatestPosterUrl =
+                    currentOriginalPosterUrl;
+            }
+
+            if (originalFullPosterImage != null)
+                originalFullPosterImage.texture =
+                    originalTexture;
+
+            if (data.revisionCount <= 0 &&
+                outputPosterImage != null)
+            {
+                outputPosterImage.texture =
+                    originalTexture;
+            }
+
+            originalPosterGenerated = true;
+        }
+
+        // -----------------------------------------------------
+        // RESTORE LATEST
+        // -----------------------------------------------------
+
+        if (latestTexture != null)
+        {
+            currentLatestPosterUrl =
+                TextureToDataUrl(latestTexture);
+
+            CurrentPosterUrl =
+                currentLatestPosterUrl;
+
+            if (latestFullPosterImage != null)
+                latestFullPosterImage.texture =
+                    latestTexture;
+
+            if (data.revisionCount > 0)
+            {
+                if (descriptionPosterImage != null)
+                    descriptionPosterImage.texture =
+                        latestTexture;
+
+                if (revisionPosterImage != null)
+                    revisionPosterImage.texture =
+                        latestTexture;
+
+                if (finalExplanationPosterImage != null)
+                    finalExplanationPosterImage.texture =
+                        latestTexture;
+            }
+
+            originalPosterGenerated = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(
+            currentLatestPosterUrl))
+        {
+            CurrentPosterUrl =
+                currentLatestPosterUrl;
+        }
+
+        Debug.Log(
+            "DesignManager: Poster restore completed. " +
+            "Original = " +
+            (originalTexture != null) +
+            " | Latest = " +
+            (latestTexture != null) +
+            " | Submitted = " +
+            data.isSubmitted
+        );
+    }
+
+
+    private string TextureToDataUrl(
+        Texture2D texture)
+    {
+        if (texture == null)
+            return "";
+
+        try
+        {
+            byte[] pngBytes =
+                texture.EncodeToPNG();
+
+            if (pngBytes == null ||
+                pngBytes.Length == 0)
+            {
+                return "";
+            }
+
+            return
+                "data:image/png;base64," +
+                Convert.ToBase64String(pngBytes);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning(
+                "DesignManager: Failed to convert restored poster to data URL: " +
+                exception.Message
+            );
+
+            return "";
+        }
+    }
+
+
+    private async Task<bool> SavePosterBackupAsync(
+        string variant,
+        string imageUrl,
+        bool requireCloud)
+    {
+        if (IsPracticeMode())
+            return true;
+
+        if (ParticipantManager.Instance == null)
+            return false;
+
+        ParticipantData data =
+            ParticipantManager.Instance.CurrentParticipant;
+
+        if (data == null ||
+            string.IsNullOrWhiteSpace(data.submissionID) ||
+            string.IsNullOrWhiteSpace(imageUrl))
+        {
+            return false;
+        }
+
+        Texture2D texture =
+            await DownloadPosterTexture(imageUrl);
+
+        if (texture == null)
+            return false;
+
+        PosterStorage.SaveResult result =
+            await PosterStorage.SaveAsync(
+                data.submissionID,
+                variant,
+                texture
+            );
+
+        if (requireCloud)
+        {
+            if (!result.cloudSaved)
+            {
+                SetStatus(
+                    "Poster backup could not be saved to the cloud. Please check your connection and try again."
+                );
+
+                return false;
+            }
+
+            return true;
+        }
+
+        return result.localSaved || result.cloudSaved;
     }
 
 
@@ -667,10 +932,6 @@ public class DesignManager : MonoBehaviour
 
     public void OnHomeButtonPressed()
     {
-        // -----------------------------------------------------
-        // DO NOT ALLOW HOME DURING PROCESSING
-        // -----------------------------------------------------
-
         if (IsProcessing)
         {
             ShowTemporaryLoading(
@@ -681,44 +942,111 @@ public class DesignManager : MonoBehaviour
         }
 
 
-        // -----------------------------------------------------
-        // PRACTICE MODE
-        // -----------------------------------------------------
-        //
-        // Practice progress does NOT need to be saved.
-        // Immediately return to Main Dashboard.
-        //
+        // =====================================================
+        // PRACTICE
+        // =====================================================
 
         if (IsPracticeMode())
         {
-            Debug.Log(
-                "DesignManager: Leaving Practice Mode. " +
-                "Practice progress will not be saved."
-            );
+            if (PracticeManager.Instance != null)
+            {
+                PracticeManager.Instance.ExitPractice();
+            }
+            else
+            {
+                SetDesignMode(DesignMode.Competition);
+                ClearPracticeRuntimeState();
 
-            ReturnToMainDashboard();
+                if (UIManager.Instance != null)
+                    UIManager.Instance.ShowMainMenu();
+            }
 
             return;
         }
 
 
-        // -----------------------------------------------------
-        // SUBMITTED VIEW MODE
-        // -----------------------------------------------------
+        // =====================================================
+        // SUBMITTED CHALLENGE
+        // =====================================================
 
-        if (submittedViewMode)
+        if (ParticipantManager.Instance != null &&
+            ParticipantManager.Instance.IsSubmitted())
         {
             ReturnToMainDashboard();
-
             return;
         }
 
 
-        // -----------------------------------------------------
-        // COMPETITION MODE
-        // -----------------------------------------------------
+        // =====================================================
+        // ACTIVE CHALLENGE
+        // =====================================================
 
         ShowHomeConfirmationPopup();
+    }
+
+    private void ClearPracticeRuntimeState()
+    {
+        practiceData = null;
+
+        submittedViewMode = false;
+
+        scoreCalculated = false;
+
+        originalPosterGenerated = false;
+
+        CurrentRevisionCount = 0;
+
+        OriginalPrompt = "";
+
+        CurrentPosterUrl = "";
+
+        currentOriginalPosterUrl = "";
+
+        currentLatestPosterUrl = "";
+
+        CurrentPosterDescription = "";
+
+        LastRevisionPrompt = "";
+
+        revisionHistory.Clear();
+
+        latestFullPosterReturnPage =
+            FullPosterReturnPage.None;
+
+        if (promptInput != null)
+        {
+            promptInput.text = "";
+            promptInput.interactable = true;
+        }
+
+        if (revisionPromptInput != null)
+            revisionPromptInput.text = "";
+
+        if (finalExplanationInput != null)
+            finalExplanationInput.text = "";
+
+        if (descriptionText != null)
+            descriptionText.text = "";
+
+        if (feedbackText != null)
+            feedbackText.text = "";
+
+        if (improvementSuggestionText != null)
+            improvementSuggestionText.text = "";
+
+        if (samplePromptPanel != null)
+            samplePromptPanel.SetActive(false);
+
+        ClearImage(outputPosterImage);
+        ClearImage(descriptionPosterImage);
+        ClearImage(revisionPosterImage);
+        ClearImage(finalExplanationPosterImage);
+        ClearImage(originalFullPosterImage);
+        ClearImage(latestFullPosterImage);
+
+        UpdateSamplePromptButton();
+        UpdateRevisionCounter();
+        UpdateAllButtonStates();
     }
 
     private void ShowHomeConfirmationPopup()
@@ -855,12 +1183,46 @@ public class DesignManager : MonoBehaviour
             "Continuing your previous challenge."
         );
 
+        // -------------------------------------------------
+        // MAKE SURE WE ARE IN COMPETITION MODE
+        // -------------------------------------------------
+
+        SetDesignMode(
+            DesignMode.Competition
+        );
+
+
+        // -------------------------------------------------
+        // RESTORE SAVED CHALLENGE DATA
+        // -------------------------------------------------
+
+        LoadParticipantData();
+
+
+        // -------------------------------------------------
+        // OPEN IDEA PROMPT
+        // -------------------------------------------------
 
         if (UIManager.Instance != null)
         {
             UIManager.Instance
                 .OpenIdeaPrompt();
         }
+
+
+        // -------------------------------------------------
+        // REFRESH BUTTON STATES
+        // -------------------------------------------------
+
+        UpdateRevisionCounter();
+
+        UpdateAllButtonStates();
+
+
+        Debug.Log(
+            "DesignManager: Continuing existing challenge. " +
+            "Saved participant data restored."
+        );
     }
 
     public void OnContinueChallengeNo()
@@ -920,6 +1282,39 @@ public class DesignManager : MonoBehaviour
         HideHomeConfirmationPopup();
         HideContinueChallengePopup();
 
+        // =====================================================
+        // PRACTICE MODE
+        // =====================================================
+
+        if (IsPracticeMode())
+        {
+            if (PracticeManager.Instance != null)
+            {
+                PracticeManager.Instance.ExitPractice();
+            }
+            else
+            {
+                SetDesignMode(
+                    DesignMode.Competition
+                );
+
+                ClearPracticeRuntimeState();
+
+                CloseAllWorkspacePanels();
+
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.ShowMainMenu();
+                }
+            }
+
+            return;
+        }
+
+        // =====================================================
+        // COMPETITION MODE
+        // =====================================================
+
         CloseAllWorkspacePanels();
 
         if (UIManager.Instance != null)
@@ -948,6 +1343,27 @@ public class DesignManager : MonoBehaviour
             return;
         }
 
+        // ALWAYS enforce Sample Prompt visibility
+        // based on the current design mode.
+        bool isPractice =
+            CurrentMode == DesignMode.Practice;
+
+        if (samplePromptButton != null)
+        {
+            samplePromptButton.gameObject.SetActive(
+                isPractice
+            );
+        }
+
+        if (!isPractice &&
+            samplePromptPanel != null)
+        {
+            samplePromptPanel.SetActive(false);
+        }
+
+        // Make sure Sample Prompt visibility
+        // always matches the current design mode.
+        UpdateSamplePromptButton();
 
         // =====================================================
         // PRACTICE MODE
@@ -961,7 +1377,6 @@ public class DesignManager : MonoBehaviour
 
             submittedViewMode = false;
 
-            // Create completely separate practice data
             if (practiceData == null)
             {
                 CreatePracticeData();
@@ -972,38 +1387,19 @@ public class DesignManager : MonoBehaviour
             if (promptPanel != null)
                 promptPanel.SetActive(true);
 
+            UpdateSamplePromptButton();
 
-            // =====================================================
-            // PRACTICE MODE
-            // =====================================================
+            SetPromptStatus("");
 
-            if (IsPracticeMode())
-            {
-                Debug.Log(
-                    "DesignManager: Opening Idea Prompt in Practice Mode."
-                );
+            UpdateRevisionCounter();
 
-                submittedViewMode = false;
+            UpdateAllButtonStates();
 
-                CloseAllWorkspacePanels();
+            Speak(
+                "Practice mode. Enter your design idea."
+            );
 
-                if (promptPanel != null)
-                    promptPanel.SetActive(true);
-
-                UpdateSamplePromptButton();
-
-                SetPromptStatus("");
-
-                UpdateRevisionCounter();
-
-                UpdateAllButtonStates();
-
-                Speak(
-                    "Practice mode. Enter your design idea."
-                );
-
-                return;
-            }
+            return;
         }
 
 
@@ -1084,6 +1480,10 @@ public class DesignManager : MonoBehaviour
         SetPromptStatus("");
 
         UpdateAllButtonStates();
+
+        Speak(
+            "Poster prompt page. Enter your design idea."
+        );
     }
 
     public void StartPracticeMode()
@@ -1097,6 +1497,28 @@ public class DesignManager : MonoBehaviour
         );
 
         StartNewPracticeSession();
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.OpenIdeaPrompt();
+        }
+        else
+        {
+            OpenPrompt();
+        }
+    }
+
+    public void StartCompetitionMode()
+    {
+        Debug.Log(
+            "DesignManager: Competition Mode selected."
+        );
+
+        SetDesignMode(
+            DesignMode.Competition
+        );
+
+        UpdateSamplePromptButton();
 
         if (UIManager.Instance != null)
         {
@@ -1129,7 +1551,7 @@ public class DesignManager : MonoBehaviour
         if (IsPracticeMode())
         {
             originalUrl =
-                GetPracticePosterUrl();
+                GetPracticeOriginalPosterUrl();
         }
         else
         {
@@ -1156,10 +1578,13 @@ public class DesignManager : MonoBehaviour
 
         try
         {
-            // OUTPUT ALWAYS SHOWS ORIGINAL POSTER
             await LoadPosterToImage(
                 originalUrl,
                 outputPosterImage
+            );
+
+            Speak(
+                "Generated poster page. This is your original poster."
             );
         }
         finally
@@ -1179,7 +1604,6 @@ public class DesignManager : MonoBehaviour
         if (IsProcessing)
             return;
 
-
         // =====================================================
         // PRACTICE MODE
         // =====================================================
@@ -1189,7 +1613,6 @@ public class DesignManager : MonoBehaviour
             await GeneratePracticePoster();
             return;
         }
-
 
         // =====================================================
         // COMPETITION MODE
@@ -1234,7 +1657,6 @@ public class DesignManager : MonoBehaviour
         if (!ValidateParticipant())
             return;
 
-
         string prompt =
             promptInput != null
                 ? promptInput.text.Trim()
@@ -1253,7 +1675,6 @@ public class DesignManager : MonoBehaviour
             return;
         }
 
-
         SetPromptStatus("");
 
         OriginalPrompt = prompt;
@@ -1262,17 +1683,16 @@ public class DesignManager : MonoBehaviour
 
         await ParticipantManager.Instance.Save();
 
-
         SetPromptButtonsInteractable(false);
 
         if (promptInput != null)
             promptInput.interactable = false;
 
-
         ShowLoading(
             "Generating your poster. Please wait."
         );
 
+        bool generationSucceeded = false;
 
         try
         {
@@ -1289,12 +1709,14 @@ public class DesignManager : MonoBehaviour
                 return;
             }
 
+            // -------------------------------------------------
+            // GENERATE ORIGINAL POSTER
+            // -------------------------------------------------
 
             AIBackendManager.PosterResult result =
                 await aiBackendManager.GeneratePoster(
                     prompt
                 );
-
 
             if (
                 result == null ||
@@ -1312,10 +1734,9 @@ public class DesignManager : MonoBehaviour
 
                 return;
             }
-
-
-            CurrentPosterUrl =
-                result.imageUrl;
+            // -------------------------------------------------
+            // UPDATE STATE
+            // -------------------------------------------------
 
             originalPosterGenerated = true;
 
@@ -1327,6 +1748,31 @@ public class DesignManager : MonoBehaviour
 
             revisionHistory.Clear();
 
+            OriginalPrompt = prompt;
+
+            // -------------------------------------------------
+            // KEEP IMAGE ONLY IN MEMORY
+            // -------------------------------------------------
+
+            CurrentPosterUrl =
+                result.imageUrl;
+
+            currentOriginalPosterUrl =
+                result.imageUrl;
+
+            currentLatestPosterUrl =
+                result.imageUrl;
+
+            // -------------------------------------------------
+            // FIRESTORE DATA
+            // -------------------------------------------------
+            //
+            // IMPORTANT:
+            // Never put result.imageUrl into ParticipantData.
+            //
+            // These fields MUST remain empty because result.imageUrl
+            // may contain several MB of Base64 data.
+            //
 
             data.prompt =
                 prompt;
@@ -1335,10 +1781,10 @@ public class DesignManager : MonoBehaviour
                 result.promptUsed ?? "";
 
             data.originalImageUrl =
-                result.imageUrl;
+                "";
 
             data.posterImageUrl =
-                result.imageUrl;
+                "";
 
             data.revisedImageUrl =
                 "";
@@ -1361,11 +1807,12 @@ public class DesignManager : MonoBehaviour
             data.lastPage =
                 "Output";
 
+            // -------------------------------------------------
+            // SAVE METADATA ONLY
+            // -------------------------------------------------
 
             bool saved =
-                await ParticipantManager.Instance
-                    .Save();
-
+                await ParticipantManager.Instance.Save();
 
             if (!saved)
             {
@@ -1376,12 +1823,14 @@ public class DesignManager : MonoBehaviour
                 return;
             }
 
+            // -------------------------------------------------
+            // DOWNLOAD GENERATED IMAGE
+            // -------------------------------------------------
 
             Texture2D texture =
                 await aiBackendManager.DownloadImage(
                     result.imageUrl
                 );
-
 
             if (
                 texture != null &&
@@ -1392,16 +1841,26 @@ public class DesignManager : MonoBehaviour
                     texture;
             }
 
+            if (texture != null)
+            {
+                PosterStorage.SaveResult backupResult =
+                    await PosterStorage.SaveAsync(
+                        data.submissionID,
+                        "original",
+                        texture
+                    );
 
-            CloseAllWorkspacePanels();
+                if (!backupResult.localSaved &&
+                    !backupResult.cloudSaved)
+                {
+                    Debug.LogWarning(
+                        "DesignManager: Original poster backup could not be saved."
+                    );
+                }
+            }
 
-            if (outputPanel != null)
-                outputPanel.SetActive(true);
+            generationSucceeded = true;
 
-
-            Speak(
-                "Poster generated successfully. Opening output page."
-            );
         }
         catch (Exception exception)
         {
@@ -1414,7 +1873,22 @@ public class DesignManager : MonoBehaviour
         }
         finally
         {
+            // IMPORTANT:
+            // Wait until the loading popup has completely
+            // finished before opening Output.
             await HideLoading();
+
+            if (generationSucceeded)
+            {
+                CloseAllWorkspacePanels();
+
+                if (outputPanel != null)
+                    outputPanel.SetActive(true);
+
+                Speak(
+                    "Poster generated successfully. Opening output page."
+                );
+            }
 
             if (promptInput != null)
             {
@@ -1428,19 +1902,10 @@ public class DesignManager : MonoBehaviour
 
     private async Task GeneratePracticePoster()
     {
-        // =====================================================
-        // MAKE SURE PRACTICE DATA EXISTS
-        // =====================================================
-
         if (practiceData == null)
         {
             CreatePracticeData();
         }
-
-
-        // =====================================================
-        // PREVENT MULTIPLE GENERATIONS
-        // =====================================================
 
         if (originalPosterGenerated)
         {
@@ -1455,16 +1920,10 @@ public class DesignManager : MonoBehaviour
             return;
         }
 
-
-        // =====================================================
-        // GET PROMPT
-        // =====================================================
-
         string prompt =
             promptInput != null
                 ? promptInput.text.Trim()
                 : "";
-
 
         if (string.IsNullOrWhiteSpace(prompt))
         {
@@ -1479,13 +1938,7 @@ public class DesignManager : MonoBehaviour
             return;
         }
 
-
         SetPromptStatus("");
-
-
-        // =====================================================
-        // SAVE TO PRACTICE DATA
-        // =====================================================
 
         practiceData.prompt =
             prompt;
@@ -1493,35 +1946,24 @@ public class DesignManager : MonoBehaviour
         OriginalPrompt =
             prompt;
 
-
-        // =====================================================
-        // UI
-        // =====================================================
-
         SetPromptButtonsInteractable(false);
 
         if (promptInput != null)
             promptInput.interactable = false;
 
-
         ShowLoading(
             "Generating your practice poster. Please wait."
         );
 
-
         IsProcessing = true;
 
+        bool generationSucceeded = false;
 
         try
         {
-            // -------------------------------------------------
-            // AI BACKEND
-            // -------------------------------------------------
-
             if (aiBackendManager == null)
                 aiBackendManager =
                     AIBackendManager.Instance;
-
 
             if (aiBackendManager == null)
             {
@@ -1532,7 +1974,6 @@ public class DesignManager : MonoBehaviour
                 return;
             }
 
-
             // -------------------------------------------------
             // GENERATE
             // -------------------------------------------------
@@ -1541,7 +1982,6 @@ public class DesignManager : MonoBehaviour
                 await aiBackendManager.GeneratePoster(
                     prompt
                 );
-
 
             if (
                 result == null ||
@@ -1560,10 +2000,9 @@ public class DesignManager : MonoBehaviour
                 return;
             }
 
-
-            // =================================================
+            // -------------------------------------------------
             // UPDATE PRACTICE DATA
-            // =================================================
+            // -------------------------------------------------
 
             practiceData.prompt =
                 prompt;
@@ -1592,12 +2031,17 @@ public class DesignManager : MonoBehaviour
             practiceData.finalExplanation =
                 "";
 
-
-            // =================================================
-            // UPDATE DESIGN MANAGER STATE
-            // =================================================
+            // -------------------------------------------------
+            // UPDATE DESIGN MANAGER
+            // -------------------------------------------------
 
             CurrentPosterUrl =
+                result.imageUrl;
+
+            currentOriginalPosterUrl =
+                result.imageUrl;
+
+            currentLatestPosterUrl =
                 result.imageUrl;
 
             OriginalPrompt =
@@ -1613,16 +2057,14 @@ public class DesignManager : MonoBehaviour
 
             originalPosterGenerated = true;
 
-
-            // =================================================
+            // -------------------------------------------------
             // DOWNLOAD IMAGE
-            // =================================================
+            // -------------------------------------------------
 
             Texture2D texture =
                 await aiBackendManager.DownloadImage(
                     result.imageUrl
                 );
-
 
             if (
                 texture != null &&
@@ -1633,25 +2075,7 @@ public class DesignManager : MonoBehaviour
                     texture;
             }
 
-
-            // =================================================
-            // OPEN OUTPUT
-            // =================================================
-
-            CloseAllWorkspacePanels();
-
-            if (outputPanel != null)
-                outputPanel.SetActive(true);
-
-
-            Speak(
-                "Practice poster generated successfully. Opening output page."
-            );
-
-
-            Debug.Log(
-                "DesignManager: Practice poster generated successfully."
-            );
+            generationSucceeded = true;
         }
         catch (Exception exception)
         {
@@ -1667,6 +2091,22 @@ public class DesignManager : MonoBehaviour
             await HideLoading();
 
             IsProcessing = false;
+
+            // -------------------------------------------------
+            // OPEN OUTPUT ONLY AFTER LOADING FINISHES
+            // -------------------------------------------------
+
+            if (generationSucceeded)
+            {
+                CloseAllWorkspacePanels();
+
+                if (outputPanel != null)
+                    outputPanel.SetActive(true);
+
+                Speak(
+                    "Practice poster generated successfully. Opening output page."
+                );
+            }
 
             if (promptInput != null)
             {
@@ -1780,12 +2220,20 @@ public class DesignManager : MonoBehaviour
 
     private async Task OpenDescriptionAsync()
     {
+        // =====================================================
+        // PRACTICE MODE
+        // =====================================================
+
         if (IsPracticeMode())
         {
             await OpenPracticeDescriptionAsync();
             return;
         }
 
+
+        // =====================================================
+        // COMPETITION MODE
+        // =====================================================
 
         if (IsProcessing)
         {
@@ -1796,9 +2244,10 @@ public class DesignManager : MonoBehaviour
             return;
         }
 
-        // DESCRIPTION ALWAYS SHOWS LATEST POSTER
+
         string latestUrl =
             GetLatestPosterUrl();
+
 
         if (string.IsNullOrWhiteSpace(latestUrl))
         {
@@ -1809,37 +2258,90 @@ public class DesignManager : MonoBehaviour
             return;
         }
 
+
+        // =====================================================
+        // OPEN DESCRIPTION PANEL
+        // =====================================================
+
         CloseAllWorkspacePanels();
 
         if (descriptionPanel != null)
             descriptionPanel.SetActive(true);
 
-        IsProcessing = true;
+
+        // =====================================================
+        // CHECK EXISTING DESCRIPTION FIRST
+        // =====================================================
+        //
+        // If description already exists:
+        // - Do not show loading popup
+        // - Do not generate description again
+        // - Just display the existing description
+        //
+        // =====================================================
+
+        if (!string.IsNullOrWhiteSpace(
+            CurrentPosterDescription))
+        {
+            if (descriptionText != null)
+            {
+                descriptionText.text =
+                    CurrentPosterDescription;
+            }
+
+            SetDescriptionStatus("");
+
+            try
+            {
+                await LoadPosterToImage(
+                    latestUrl,
+                    descriptionPosterImage
+                );
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
+
+            UpdateAllButtonStates();
+
+            return;
+        }
+
+
+        // =====================================================
+        // DESCRIPTION DOES NOT EXIST
+        // =====================================================
+        //
+        // Only show loading when description actually needs
+        // to be generated.
+        //
+        // =====================================================
+
+        ShowLoading(
+            "Analyzing your poster. Please wait."
+        );
 
         SetDescriptionStatus(
             "Loading your latest poster..."
         );
 
+
         try
         {
+            // -------------------------------------------------
+            // LOAD LATEST IMAGE
+            // -------------------------------------------------
+
             await LoadPosterToImage(
                 latestUrl,
                 descriptionPosterImage
             );
 
-            if (!string.IsNullOrWhiteSpace(
-                CurrentPosterDescription))
-            {
-                if (descriptionText != null)
-                {
-                    descriptionText.text =
-                        CurrentPosterDescription;
-                }
 
-                SetDescriptionStatus("");
-
-                return;
-            }
+            // -------------------------------------------------
+            // GENERATE DESCRIPTION
+            // -------------------------------------------------
 
             if (descriptionText != null)
                 descriptionText.text = "";
@@ -1847,17 +2349,36 @@ public class DesignManager : MonoBehaviour
             SetDescriptionStatus(
                 "Analyzing your poster. Please wait..."
             );
+
+            await GenerateDescription();
+        }
+        catch (Exception exception)
+        {
+            SetDescriptionStatus(
+                "Description generation failed."
+            );
+
+            Debug.LogException(exception);
         }
         finally
         {
-            IsProcessing = false;
-            UpdateAllButtonStates();
-        }
+            await HideLoading();
 
-        if (string.IsNullOrWhiteSpace(
-            CurrentPosterDescription))
-        {
-            await GenerateDescription();
+            // Make sure Description panel is visible
+            // after AI generation has completed.
+            CloseAllWorkspacePanels();
+
+            if (descriptionPanel != null)
+                descriptionPanel.SetActive(true);
+
+            UpdateAllButtonStates();
+
+            // Automatically read the complete AI description.
+            if (!string.IsNullOrWhiteSpace(
+                CurrentPosterDescription))
+            {
+                SpeakFullDescription();
+            }
         }
     }
 
@@ -1872,8 +2393,10 @@ public class DesignManager : MonoBehaviour
             return;
         }
 
+
         string latestUrl =
             GetPracticePosterUrl();
+
 
         if (string.IsNullOrWhiteSpace(latestUrl))
         {
@@ -1884,37 +2407,90 @@ public class DesignManager : MonoBehaviour
             return;
         }
 
+
+        // =====================================================
+        // OPEN DESCRIPTION PANEL
+        // =====================================================
+
         CloseAllWorkspacePanels();
 
         if (descriptionPanel != null)
             descriptionPanel.SetActive(true);
 
-        IsProcessing = true;
+
+        // =====================================================
+        // CHECK EXISTING DESCRIPTION FIRST
+        // =====================================================
+        //
+        // If description already exists:
+        // - Do not show loading popup
+        // - Do not generate again
+        // - Just display the existing description
+        //
+        // =====================================================
+
+        if (!string.IsNullOrWhiteSpace(
+            CurrentPosterDescription))
+        {
+            if (descriptionText != null)
+            {
+                descriptionText.text =
+                    CurrentPosterDescription;
+            }
+
+            SetDescriptionStatus("");
+
+            try
+            {
+                await LoadPosterToImage(
+                    latestUrl,
+                    descriptionPosterImage
+                );
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
+
+            UpdateAllButtonStates();
+
+            return;
+        }
+
+
+        // =====================================================
+        // DESCRIPTION DOES NOT EXIST
+        // =====================================================
+        //
+        // Only show loading when description actually needs
+        // to be generated.
+        //
+        // =====================================================
+
+        ShowLoading(
+            "Analyzing your practice poster. Please wait."
+        );
 
         SetDescriptionStatus(
             "Loading your practice poster..."
         );
 
+
         try
         {
+            // -------------------------------------------------
+            // LOAD LATEST PRACTICE IMAGE
+            // -------------------------------------------------
+
             await LoadPosterToImage(
                 latestUrl,
                 descriptionPosterImage
             );
 
-            if (!string.IsNullOrWhiteSpace(
-                CurrentPosterDescription))
-            {
-                if (descriptionText != null)
-                {
-                    descriptionText.text =
-                        CurrentPosterDescription;
-                }
 
-                SetDescriptionStatus("");
-
-                return;
-            }
+            // -------------------------------------------------
+            // GENERATE PRACTICE DESCRIPTION
+            // -------------------------------------------------
 
             if (descriptionText != null)
                 descriptionText.text = "";
@@ -1922,17 +2498,33 @@ public class DesignManager : MonoBehaviour
             SetDescriptionStatus(
                 "Analyzing your poster. Please wait..."
             );
+
+            await GeneratePracticeDescription();
+        }
+        catch (Exception exception)
+        {
+            SetDescriptionStatus(
+                "Description generation failed."
+            );
+
+            Debug.LogException(exception);
         }
         finally
         {
-            IsProcessing = false;
-            UpdateAllButtonStates();
-        }
+            await HideLoading();
 
-        if (string.IsNullOrWhiteSpace(
-            CurrentPosterDescription))
-        {
-            await GeneratePracticeDescription();
+            CloseAllWorkspacePanels();
+
+            if (descriptionPanel != null)
+                descriptionPanel.SetActive(true);
+
+            UpdateAllButtonStates();
+
+            if (!string.IsNullOrWhiteSpace(
+                CurrentPosterDescription))
+            {
+                SpeakFullDescription();
+            }
         }
     }
 
@@ -2003,6 +2595,8 @@ public class DesignManager : MonoBehaviour
 
             SetDescriptionStatus("");
 
+            
+
             // Save ONLY to PracticeData
             if (practiceData != null)
             {
@@ -2010,9 +2604,7 @@ public class DesignManager : MonoBehaviour
                     CurrentPosterDescription;
             }
 
-            Speak(
-                "Practice poster description generated successfully."
-            );
+            
         }
         catch (Exception exception)
         {
@@ -2030,21 +2622,36 @@ public class DesignManager : MonoBehaviour
         }
     }
 
-    private string GetPracticePosterUrl()
+    private string GetPracticeOriginalPosterUrl()
     {
-        if (practiceData == null)
-            return "";
-
-        string url =
-            practiceData.GetLatestPosterUrl();
-
-        if (!string.IsNullOrWhiteSpace(url))
+        if (!string.IsNullOrWhiteSpace(
+            currentOriginalPosterUrl))
         {
-            CurrentPosterUrl = url;
-            return url;
+            return currentOriginalPosterUrl;
         }
 
-        return CurrentPosterUrl ?? "";
+        return "";
+    }
+
+
+    private string GetPracticePosterUrl()
+    {
+        if (!string.IsNullOrWhiteSpace(
+            currentLatestPosterUrl))
+        {
+            CurrentPosterUrl =
+                currentLatestPosterUrl;
+
+            return currentLatestPosterUrl;
+        }
+
+        if (!string.IsNullOrWhiteSpace(
+            CurrentPosterUrl))
+        {
+            return CurrentPosterUrl;
+        }
+
+        return "";
     }
 
 
@@ -2086,6 +2693,8 @@ public class DesignManager : MonoBehaviour
 
                 return;
             }
+
+            await RefreshLatestPosterImages();
 
             AIBackendManager.DescriptionResult result =
                 await aiBackendManager.DescribePoster(
@@ -2130,9 +2739,7 @@ public class DesignManager : MonoBehaviour
                     .Save();
             }
 
-            Speak(
-                "Poster description generated successfully."
-            );
+           
         }
         catch (Exception exception)
         {
@@ -2150,6 +2757,22 @@ public class DesignManager : MonoBehaviour
         }
     }
 
+    public void ReplayDescription()
+    {
+        if (!AccessibilityToggle.AccessibilityEnabled)
+            return;
+
+        if (string.IsNullOrWhiteSpace(CurrentPosterDescription))
+        {
+            Speak(
+                "The poster description is not available yet."
+            );
+
+            return;
+        }
+
+        Speak(CurrentPosterDescription);
+    }
 
     public async void DescriptionNextButton()
     {
@@ -2346,31 +2969,88 @@ public class DesignManager : MonoBehaviour
     }
 
 
-    public async void BackFromLatestFullPoster()
+    public void BackFromLatestFullPoster()
     {
         if (IsProcessing)
             return;
 
+        // Close fullscreen
+        if (latestFullPosterPanel != null)
+            latestFullPosterPanel.SetActive(false);
+
         switch (latestFullPosterReturnPage)
         {
             case FullPosterReturnPage.Description:
-                await OpenDescriptionAsync();
+
+                CloseAllWorkspacePanels();
+
+                if (descriptionPanel != null)
+                    descriptionPanel.SetActive(true);
+
+                UpdateAllButtonStates();
+
+                Speak(
+                    "Returning to poster description page."
+                );
+
                 break;
+
 
             case FullPosterReturnPage.Revision:
-                await OpenRevisionAsync();
+
+                CloseAllWorkspacePanels();
+
+                if (revisionPanel != null)
+                    revisionPanel.SetActive(true);
+
+                UpdateAllButtonStates();
+
+                Speak(
+                    "Returning to poster revision page."
+                );
+
                 break;
+
 
             case FullPosterReturnPage.FinalExplanation:
-                await OpenFinalExplanationAsync();
+
+                CloseAllWorkspacePanels();
+
+                if (finalExplanationPanel != null)
+                    finalExplanationPanel.SetActive(true);
+
+                UpdateAllButtonStates();
+
+                Speak(
+                    "Returning to final explanation page."
+                );
+
                 break;
+
 
             case FullPosterReturnPage.Score:
+
                 OpenScore();
+
                 break;
 
+
             case FullPosterReturnPage.Feedback:
+
                 OpenFeedback();
+
+                break;
+
+
+            default:
+
+                CloseAllWorkspacePanels();
+
+                if (descriptionPanel != null)
+                    descriptionPanel.SetActive(true);
+
+                UpdateAllButtonStates();
+
                 break;
         }
     }
@@ -2408,6 +3088,10 @@ public class DesignManager : MonoBehaviour
 
             if (revisionPanel != null)
                 revisionPanel.SetActive(true);
+
+            Speak(
+                "Poster revision page. You can enter changes you want to make to the poster."
+            );
 
             IsProcessing = true;
 
@@ -2608,6 +3292,34 @@ public class DesignManager : MonoBehaviour
             CurrentPosterUrl =
                 result.imageUrl;
 
+            // =====================================================
+            // DEBUG
+            // =====================================================
+
+            Debug.Log(
+                "========== REVISION DEBUG =========="
+            );
+
+            Debug.Log(
+                "Revision Number: " +
+                CurrentRevisionCount
+            );
+
+            Debug.Log(
+                "NEW AI IMAGE URL: " +
+                result.imageUrl
+            );
+
+            Debug.Log(
+                "CurrentPosterUrl: " +
+                CurrentPosterUrl
+            );
+
+
+            // -------------------------------------------------
+            // SAVE REVISION HISTORY
+            // -------------------------------------------------
+
 
             revisionHistory.Add(
                 new RevisionEntry
@@ -2621,8 +3333,23 @@ public class DesignManager : MonoBehaviour
             );
 
 
+
             // -------------------------------------------------
-            // SAVE PARTICIPANT DATA
+            // UPDATE MEMORY-ONLY IMAGE STATE
+            // -------------------------------------------------
+
+            CurrentPosterUrl =
+                result.imageUrl;
+
+            currentLatestPosterUrl =
+                result.imageUrl;
+
+            // IMPORTANT:
+            // We intentionally DO NOT save the image URL/Base64
+            // into Firestore.
+
+            // -------------------------------------------------
+            // SAVE REVISION METADATA ONLY
             // -------------------------------------------------
 
             data.revisionPrompt =
@@ -2632,10 +3359,13 @@ public class DesignManager : MonoBehaviour
                 CurrentRevisionCount;
 
             data.revisedImageUrl =
-                CurrentPosterUrl;
+                "";
 
             data.posterImageUrl =
-                CurrentPosterUrl;
+                "";
+
+            data.originalImageUrl =
+                "";
 
             data.promptUsed =
                 result.promptUsed ?? "";
@@ -2652,17 +3382,14 @@ public class DesignManager : MonoBehaviour
             data.lastPage =
                 "Description";
 
-
             CurrentPosterDescription =
                 "";
 
             if (descriptionText != null)
                 descriptionText.text = "";
 
-
             bool saved =
-                await ParticipantManager.Instance
-                    .Save();
+                await ParticipantManager.Instance.Save();
 
             if (!saved)
             {
@@ -2673,28 +3400,41 @@ public class DesignManager : MonoBehaviour
                 return;
             }
 
-
             // -------------------------------------------------
-            // LOAD IMAGE
+            // LOAD NEW REVISED IMAGE
             // -------------------------------------------------
 
-            await LoadPosterToImage(
-                CurrentPosterUrl,
-                revisionPosterImage
-            );
+            // Update all latest-poster UI images first.
+            await RefreshLatestPosterImages();
 
+            // Persist the latest poster outside the main
+            // submission document. This supports same-device
+            // restore and cross-device submitted-view restore.
+            bool latestBackupSaved =
+                await SavePosterBackupAsync(
+                    "latest",
+                    CurrentPosterUrl,
+                    false
+                );
+
+            if (!latestBackupSaved)
+            {
+                Debug.LogWarning(
+                    "DesignManager: Latest poster backup could not be saved."
+                );
+            }
+
+            // Explicitly make sure Description uses
+            // the NEW revised poster.
             await LoadPosterToImage(
                 CurrentPosterUrl,
                 descriptionPosterImage
             );
 
-
             if (revisionPromptInput != null)
                 revisionPromptInput.text = "";
 
-
             UpdateRevisionCounter();
-
 
             int remaining =
                 MAX_REVISION_COUNT -
@@ -2710,13 +3450,31 @@ public class DesignManager : MonoBehaviour
                 " remaining."
             );
 
+            // -------------------------------------------------
+            // OPEN DESCRIPTION WITH NEW REVISED POSTER
+            // -------------------------------------------------
 
             CloseAllWorkspacePanels();
 
             if (descriptionPanel != null)
                 descriptionPanel.SetActive(true);
 
+            // Make absolutely sure the Description panel
+            // displays the revised poster.
+            await LoadPosterToImage(
+                CurrentPosterUrl,
+                descriptionPosterImage
+            );
+
+            SetDescriptionStatus(
+                "Analyzing your revised poster. Please wait..."
+            );
+
+            // CurrentPosterDescription was cleared above,
+            // so GenerateDescription() will generate a NEW
+            // description based on the revised image.
             await GenerateDescription();
+
         }
         catch (Exception exception)
         {
@@ -2853,10 +3611,14 @@ public class DesignManager : MonoBehaviour
             practiceData.prompt =
                 OriginalPrompt;
 
-            practiceData.originalImageUrl =
-                practiceData.originalImageUrl;
+            practiceData.originalImageUrl = "";
+            practiceData.posterImageUrl = "";
+            practiceData.revisedImageUrl = "";
 
-            practiceData.posterImageUrl =
+            CurrentPosterUrl =
+                result.imageUrl;
+
+            currentLatestPosterUrl =
                 result.imageUrl;
 
             practiceData.revisedImageUrl =
@@ -2901,11 +3663,17 @@ public class DesignManager : MonoBehaviour
                 revisionPosterImage
             );
 
+            // IMPORTANT:
+            // Also update the Description panel image
+            // to the newly revised poster.
+            await LoadPosterToImage(
+                CurrentPosterUrl,
+                descriptionPosterImage
+            );
 
             int remaining =
                 MAX_REVISION_COUNT -
                 CurrentRevisionCount;
-
 
             SetStatus(
                 "Revision " +
@@ -2917,17 +3685,16 @@ public class DesignManager : MonoBehaviour
                 " remaining."
             );
 
-
             CloseAllWorkspacePanels();
 
             if (descriptionPanel != null)
                 descriptionPanel.SetActive(true);
 
+            SetDescriptionStatus(
+                "Analyzing your revised poster. Please wait."
+            );
 
-            // =================================================
-            // GENERATE NEW DESCRIPTION
-            // =================================================
-
+            // Generate NEW description from revised image.
             await GeneratePracticeDescription();
 
 
@@ -3087,13 +3854,17 @@ public class DesignManager : MonoBehaviour
 
         if (CurrentRevisionCount == 0)
         {
+            // Use the in-memory original poster.
             CurrentPosterUrl =
-                data.originalImageUrl;
+                currentOriginalPosterUrl;
 
+            currentLatestPosterUrl =
+                currentOriginalPosterUrl;
+
+            // Never save image data to Firestore.
+            data.originalImageUrl = "";
             data.revisedImageUrl = "";
-
-            data.posterImageUrl =
-                data.originalImageUrl;
+            data.posterImageUrl = "";
 
             data.revisionPrompt = "";
         }
@@ -3164,21 +3935,34 @@ public class DesignManager : MonoBehaviour
 
         if (IsPracticeMode())
         {
-            string explanation =
-                finalExplanationInput != null
-                    ? finalExplanationInput.text.Trim()
-                    : "";
-
-
-            if (string.IsNullOrWhiteSpace(explanation))
+            if (practiceData == null)
             {
                 SetStatus(
-                    "Please enter your final explanation first."
+                    "Practice data is not available."
                 );
 
                 return;
             }
 
+            // User MUST calculate score first.
+            if (!scoreCalculated)
+            {
+                if (finalExplanationStatusText != null)
+                {
+                    finalExplanationStatusText.text =
+                        "Please calculate the score first.";
+                }
+
+                SetStatus(
+                    "Please calculate the score first."
+                );
+
+                Speak(
+                    "Please calculate the score first."
+                );
+
+                return;
+            }
 
             OpenScore();
 
@@ -3265,6 +4049,10 @@ public class DesignManager : MonoBehaviour
 
             if (finalExplanationPanel != null)
                 finalExplanationPanel.SetActive(true);
+
+            Speak(
+                "Final explanation page. Explain your poster concept, message, target audience, and accessibility considerations."
+            );
 
 
             IsProcessing = true;
@@ -3492,6 +4280,7 @@ public class DesignManager : MonoBehaviour
         }
 
 
+
         // -----------------------------------------------------
         // SAVE FINAL EXPLANATION FIRST
         // -----------------------------------------------------
@@ -3615,12 +4404,28 @@ public class DesignManager : MonoBehaviour
                 "Score";
 
 
-            // IMPORTANT:
+            // Make sure the final poster has a cloud backup
+            // before marking the challenge submitted.
+            bool posterBackupSaved =
+                await SavePosterBackupAsync(
+                    "latest",
+                    latestUrl,
+                    true
+                );
+
+            if (!posterBackupSaved)
+            {
+                SetStatus(
+                    "Your score is ready, but the poster backup could not be saved. Please try again."
+                );
+
+                return;
+            }
+
             // Do NOT directly set isSubmitted before Firebase
             // succeeds.
             //
             // SubmitCurrentChallenge() handles this safely.
-
 
             bool submitted =
                 await ParticipantManager.Instance
@@ -3638,13 +4443,16 @@ public class DesignManager : MonoBehaviour
 
             scoreCalculated = true;
 
+            // Make sure loading popup is completely closed
+            // before opening the Score panel.
+            await HideLoading();
+
             IsProcessing = false;
 
             OpenScore();
 
-            Speak(
-                "Evaluation completed. Your challenge has been submitted."
-            );
+            // Read the complete score automatically.
+            ReadScore();
         }
         catch (Exception exception)
         {
@@ -3657,7 +4465,10 @@ public class DesignManager : MonoBehaviour
         }
         finally
         {
-            await HideLoading();
+            if (loadingPopupVisible)
+                await HideLoading();
+
+            IsProcessing = false;
 
             UpdateAllButtonStates();
         }
@@ -3793,16 +4604,19 @@ public class DesignManager : MonoBehaviour
 
             scoreCalculated = true;
 
+            await HideLoading();
+
+            IsProcessing = false;
 
             CloseAllWorkspacePanels();
 
             if (scorePanel != null)
                 scorePanel.SetActive(true);
 
+            UpdatePracticeScoreUI();
 
-            Speak(
-                "Practice evaluation completed."
-            );
+            // Automatically read complete score.
+            ReadPracticeScore();
         }
         catch (Exception exception)
         {
@@ -4213,6 +5027,12 @@ public class DesignManager : MonoBehaviour
             UpdateScoreUIFromData(data);
 
         UpdateAllButtonStates();
+
+        Speak(
+            "Score page. Your final evaluation score is " +
+            totalScoreText.text +
+            " out of 100."
+        );
     }
 
     private void UpdatePracticeScoreUI()
@@ -4309,7 +5129,6 @@ public class DesignManager : MonoBehaviour
             if (feedbackPanel != null)
                 feedbackPanel.SetActive(true);
 
-
             if (practiceData != null)
             {
                 if (feedbackText != null)
@@ -4323,8 +5142,10 @@ public class DesignManager : MonoBehaviour
                 }
             }
 
-
             UpdateAllButtonStates();
+
+            // Automatically read feedback + improvement.
+            ReadFeedbackPage();
 
             return;
         }
@@ -4358,6 +5179,13 @@ public class DesignManager : MonoBehaviour
         }
 
         UpdateAllButtonStates();
+
+        Speak(
+            "Feedback page. " +
+            feedbackText.text +
+            " Improvement suggestion. " +
+            improvementSuggestionText.text
+        );
     }
 
     public void ScoreNextButton()
@@ -4450,7 +5278,7 @@ public class DesignManager : MonoBehaviour
 
         OpenLeaderboard();
     }
-     
+
 
     public void OpenLeaderboard()
     {
@@ -4460,6 +5288,10 @@ public class DesignManager : MonoBehaviour
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowLeaderboard();
+
+            Speak(
+                "Leaderboard page. Showing participant rankings."
+            );
         }
         else
         {
@@ -4475,28 +5307,48 @@ public class DesignManager : MonoBehaviour
     public void BackToPrompt()
     {
         if (!IsProcessing)
+        {
             OpenPrompt();
+
+            Speak(
+                "Returning to poster prompt page."
+            );
+        }
     }
 
 
     public void BackToOutput()
     {
         if (!IsProcessing)
+        {
             OpenOutput();
+
+            Speak(
+                "Returning to generated poster page."
+            );
+        }
     }
 
 
     public async void BackToDescription()
     {
         if (!IsProcessing)
+        {
             await OpenDescriptionAsync();
+        }
     }
 
 
     public async void BackToRevision()
     {
         if (!IsProcessing)
+        {
             await OpenRevisionAsync();
+
+            Speak(
+                "Returning to poster revision page."
+            );
+        }
     }
 
 
@@ -4506,13 +5358,23 @@ public class DesignManager : MonoBehaviour
             return;
 
         await OpenFinalExplanationAsync();
+
+        Speak(
+            "Returning to final explanation page."
+        );
     }
 
 
     public void BackToScore()
     {
         if (!IsProcessing)
+        {
             OpenScore();
+
+            Speak(
+                "Returning to score page."
+            );
+        }
     }
 
 
@@ -4522,38 +5384,40 @@ public class DesignManager : MonoBehaviour
 
     private string GetOriginalPosterUrl()
     {
-        ParticipantData data =
-            ParticipantManager.Instance != null
-                ? ParticipantManager.Instance.CurrentParticipant
-                : null;
+        // Image is stored only in memory.
+        if (!string.IsNullOrWhiteSpace(
+            currentOriginalPosterUrl))
+        {
+            return currentOriginalPosterUrl;
+        }
 
-        if (data == null)
-            return "";
-
-        return data.originalImageUrl ?? "";
+        return "";
     }
 
 
-    private string GetLatestPosterUrl()
+    public string GetLatestPosterUrl()
     {
-        ParticipantData data =
-            ParticipantManager.Instance != null
-                ? ParticipantManager.Instance.CurrentParticipant
-                : null;
-
-        if (data == null)
-            return "";
-
-        string url =
-            data.GetLatestPosterUrl();
-
-        if (!string.IsNullOrWhiteSpace(url))
+        // Latest generated/revised poster is memory-only.
+        if (!string.IsNullOrWhiteSpace(
+            currentLatestPosterUrl))
         {
-            CurrentPosterUrl = url;
-            return url;
+            CurrentPosterUrl =
+                currentLatestPosterUrl;
+
+            return currentLatestPosterUrl;
         }
 
-        return CurrentPosterUrl ?? "";
+        // Fallback to CurrentPosterUrl.
+        if (!string.IsNullOrWhiteSpace(
+            CurrentPosterUrl))
+        {
+            currentLatestPosterUrl =
+                CurrentPosterUrl;
+
+            return CurrentPosterUrl;
+        }
+
+        return "";
     }
 
 
@@ -4688,7 +5552,7 @@ public class DesignManager : MonoBehaviour
             data.isSubmitted;
 
 
-        bool hasScore = 
+        bool hasScore =
             data != null && data.HasScore();
 
         if (scoreNextButton != null)
@@ -4731,10 +5595,29 @@ public class DesignManager : MonoBehaviour
 
         if (finalExplanationNextButton != null)
         {
-            finalExplanationNextButton.interactable =
-                !IsProcessing &&
-                data != null &&
-                data.HasScore();
+            // =====================================================
+            // PRACTICE MODE
+            // =====================================================
+
+            if (IsPracticeMode())
+            {
+                finalExplanationNextButton.interactable =
+                    !IsProcessing &&
+                    scoreCalculated;
+            }
+
+            // =====================================================
+            // COMPETITION MODE
+            // =====================================================
+
+            else
+            {
+                finalExplanationNextButton.interactable =
+                    !IsProcessing &&
+                    data != null &&
+                    data.HasScore() &&
+                    !submittedViewMode;
+            }
         }
     }
 
@@ -4926,6 +5809,36 @@ public class DesignManager : MonoBehaviour
 
     private void UpdateRevisionButtonStates()
     {
+        // =====================================================
+        // PRACTICE MODE
+        // =====================================================
+
+        if (IsPracticeMode())
+        {
+            if (reviseButton != null)
+            {
+                reviseButton.interactable =
+                    !IsProcessing &&
+                    originalPosterGenerated &&
+                    CurrentRevisionCount <
+                    MAX_REVISION_COUNT;
+            }
+
+            if (revisionNextButton != null)
+            {
+                revisionNextButton.interactable =
+                    !IsProcessing &&
+                    originalPosterGenerated;
+            }
+
+            return;
+        }
+
+
+        // =====================================================
+        // COMPETITION MODE
+        // =====================================================
+
         ParticipantData data =
             ParticipantManager.Instance != null
                 ? ParticipantManager.Instance.CurrentParticipant
@@ -4941,6 +5854,8 @@ public class DesignManager : MonoBehaviour
             reviseButton.interactable =
                 !IsProcessing &&
                 !submitted &&
+                !submittedViewMode &&
+                originalPosterGenerated &&
                 CurrentRevisionCount <
                 MAX_REVISION_COUNT;
         }
@@ -4949,7 +5864,10 @@ public class DesignManager : MonoBehaviour
         if (revisionNextButton != null)
         {
             revisionNextButton.interactable =
-                !IsProcessing;
+                !IsProcessing &&
+                !submitted &&
+                !submittedViewMode &&
+                originalPosterGenerated;
         }
     }
 
@@ -4990,6 +5908,25 @@ public class DesignManager : MonoBehaviour
         if (calculateScoreButton == null)
             return;
 
+
+        // =====================================================
+        // PRACTICE MODE
+        // =====================================================
+
+        if (IsPracticeMode())
+        {
+            calculateScoreButton.interactable =
+                !IsProcessing &&
+                originalPosterGenerated;
+
+            return;
+        }
+
+
+        // =====================================================
+        // COMPETITION MODE
+        // =====================================================
+
         ParticipantData data =
             ParticipantManager.Instance != null
                 ? ParticipantManager.Instance.CurrentParticipant
@@ -4999,9 +5936,11 @@ public class DesignManager : MonoBehaviour
             data != null &&
             data.isSubmitted;
 
+
         calculateScoreButton.interactable =
             !IsProcessing &&
-            !submitted;
+            !submitted &&
+            !submittedViewMode;
     }
 
 
@@ -5009,22 +5948,18 @@ public class DesignManager : MonoBehaviour
     // LOAD POSTER
     // =========================================================
 
-    private async Task LoadPosterToImage(
-        string imageUrl,
-        RawImage target)
+    private async Task<Texture2D> DownloadPosterTexture(
+    string imageUrl)
     {
         if (string.IsNullOrWhiteSpace(imageUrl))
-            return;
-
-        if (target == null)
-            return;
+            return null;
 
         if (aiBackendManager == null)
             aiBackendManager =
                 AIBackendManager.Instance;
 
         if (aiBackendManager == null)
-            return;
+            return null;
 
         try
         {
@@ -5033,16 +5968,116 @@ public class DesignManager : MonoBehaviour
                     imageUrl
                 );
 
-            if (texture != null)
-                target.texture = texture;
+            return texture;
         }
         catch (Exception exception)
         {
             Debug.LogWarning(
-                "DesignManager: Failed to download image: " +
+                "DesignManager: Failed to download poster image: " +
                 exception.Message
             );
+
+            return null;
         }
+    }
+
+    private async Task<Texture2D> DownloadStoredPosterTexture(
+    string storagePath)
+    {
+        if (string.IsNullOrWhiteSpace(storagePath))
+            return null;
+
+        if (aiBackendManager == null)
+            aiBackendManager =
+                AIBackendManager.Instance;
+
+        if (aiBackendManager == null)
+            return null;
+
+        try
+        {
+            Texture2D texture =
+                await aiBackendManager.DownloadStoredImage(
+                    storagePath
+                );
+
+            return texture;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning(
+                "DesignManager: Failed to download stored poster: " +
+                exception.Message
+            );
+
+            return null;
+        }
+    }
+
+
+    private async Task LoadPosterToImage(
+        string imageUrl,
+        RawImage target)
+    {
+        if (target == null)
+            return;
+
+        Texture2D texture =
+            await DownloadPosterTexture(imageUrl);
+
+        if (texture != null)
+        {
+            target.texture = texture;
+
+            Canvas.ForceUpdateCanvases();
+        }
+    }
+
+    private async Task RefreshLatestPosterImages()
+    {
+        string latestUrl =
+            GetLatestPosterUrl();
+
+        if (string.IsNullOrWhiteSpace(latestUrl))
+        {
+            Debug.LogWarning(
+                "DesignManager: Cannot refresh poster. Latest URL is empty."
+            );
+
+            return;
+        }
+
+        Texture2D texture =
+            await DownloadPosterTexture(latestUrl);
+
+        if (texture == null)
+        {
+            Debug.LogWarning(
+                "DesignManager: Failed to refresh latest poster texture."
+            );
+
+            return;
+        }
+
+        // Update EVERY panel that should show the latest poster.
+
+        if (descriptionPosterImage != null)
+            descriptionPosterImage.texture = texture;
+
+        if (revisionPosterImage != null)
+            revisionPosterImage.texture = texture;
+
+        if (finalExplanationPosterImage != null)
+            finalExplanationPosterImage.texture = texture;
+
+        if (latestFullPosterImage != null)
+            latestFullPosterImage.texture = texture;
+
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log(
+            "DesignManager: All latest poster images refreshed."
+        );
     }
 
     // =========================================================
@@ -5072,9 +6107,15 @@ public class DesignManager : MonoBehaviour
 
     public void PrepareForNewChallenge()
     {
-        submittedViewMode = false;
 
-        IsProcessing = false;
+        // IMPORTANT:
+        // A new challenge always starts in Competition Mode.
+        SetDesignMode(
+            DesignMode.Competition
+        );
+
+        // New Challenge must never reuse Practice data.
+        practiceData = null;
 
         scoreCalculated = false;
 
@@ -5085,6 +6126,10 @@ public class DesignManager : MonoBehaviour
         OriginalPrompt = "";
 
         CurrentPosterUrl = "";
+
+        currentOriginalPosterUrl = "";
+
+        currentLatestPosterUrl = "";
 
         CurrentPosterDescription = "";
 
@@ -5242,9 +6287,6 @@ public class DesignManager : MonoBehaviour
             loadingPanel.SetActive(true);
         }
 
-        // IMPORTANT:
-        // The correct variable is loadingMessage,
-        // not loadingText.
         if (loadingMessage != null)
         {
             loadingMessage.text =
@@ -5258,6 +6300,18 @@ public class DesignManager : MonoBehaviour
             "Requests = " +
             loadingRequestCount +
             " | Message = " +
+            message
+        );
+
+        // =====================================================
+        // ACCESSIBILITY
+        // =====================================================
+        //
+        // Tell a blind user that an operation has started.
+        //
+        // =====================================================
+
+        Speak(
             message
         );
     }
@@ -5411,6 +6465,10 @@ public class DesignManager : MonoBehaviour
 
         CurrentPosterUrl = "";
 
+        currentOriginalPosterUrl = "";
+
+        currentLatestPosterUrl = "";
+
         CurrentPosterDescription = "";
 
         LastRevisionPrompt = "";
@@ -5511,16 +6569,18 @@ public class DesignManager : MonoBehaviour
 
     private void UpdateSamplePromptButton()
     {
+        bool showSamplePrompt =
+            CurrentMode == DesignMode.Practice;
+
         if (samplePromptButton != null)
         {
             samplePromptButton.gameObject.SetActive(
-                IsPracticeMode()
+                showSamplePrompt
             );
         }
 
-        // Sample panel must always be hidden
-        // until the user clicks the button.
-        if (samplePromptPanel != null)
+        if (!showSamplePrompt &&
+            samplePromptPanel != null)
         {
             samplePromptPanel.SetActive(false);
         }
@@ -5535,6 +6595,13 @@ public class DesignManager : MonoBehaviour
         if (!IsPracticeMode())
             return;
 
+        // Close Idea Prompt panel
+        if (promptPanel != null)
+        {
+            promptPanel.SetActive(false);
+        }
+
+        // Open Sample Prompt panel
         if (samplePromptPanel != null)
         {
             samplePromptPanel.SetActive(true);
@@ -5553,8 +6620,14 @@ public class DesignManager : MonoBehaviour
             samplePromptPanel.SetActive(false);
         }
 
+        // Reopen Idea Prompt panel
+        if (promptPanel != null)
+        {
+            promptPanel.SetActive(true);
+        }
+
         Speak(
-            "Sample prompts closed."
+            "Sample prompts closed. Enter your design idea."
         );
     }
 
@@ -5562,7 +6635,7 @@ public class DesignManager : MonoBehaviour
     public void SelectSamplePrompt1()
     {
         SelectSamplePrompt(
-            "Create a poster promoting environmental awareness and encouraging people to protect the environment."
+            "Create a recycling awareness poster using green colours, recycling icons, and the slogan Recycle Today Save Tomorrow. Use large fonts and high colour contrast."
         );
     }
 
@@ -5570,7 +6643,7 @@ public class DesignManager : MonoBehaviour
     public void SelectSamplePrompt2()
     {
         SelectSamplePrompt(
-            "Design a poster promoting inclusive education and equal learning opportunities for everyone."
+            "Create a road safety poster reminding students to use the pedestrian crossing. Use yellow warning colours and large readable text."
         );
     }
 
@@ -5578,13 +6651,12 @@ public class DesignManager : MonoBehaviour
     public void SelectSamplePrompt3()
     {
         SelectSamplePrompt(
-            "Create a poster encouraging healthy digital habits and responsible use of technology."
+            "Create a healthy eating poster encouraging students to eat fruits and vegetables every day. Use colourful illustrations and large fonts."
         );
     }
 
 
-    private void SelectSamplePrompt(
-        string samplePrompt)
+    private void SelectSamplePrompt(string samplePrompt)
     {
         if (!IsPracticeMode())
             return;
@@ -5592,14 +6664,19 @@ public class DesignManager : MonoBehaviour
         if (promptInput == null)
             return;
 
-        promptInput.text =
-            samplePrompt;
+        promptInput.text = samplePrompt;
 
         promptInput.interactable = true;
 
         if (samplePromptPanel != null)
         {
             samplePromptPanel.SetActive(false);
+        }
+
+        // Reopen Idea Prompt
+        if (promptPanel != null)
+        {
+            promptPanel.SetActive(true);
         }
 
         promptInput.Select();
@@ -5616,30 +6693,691 @@ public class DesignManager : MonoBehaviour
 
 
     // =========================================================
-    // ACCESSIBILITY
+    // ACCESSIBILITY / TALKBACK
     // =========================================================
 
-    private void Speak(
-        string message)
+    private string lastSpokenMessage = "";
+
+    private float lastSpeakTime = -10f;
+
+    [SerializeField]
+    private float speechCooldown = 0.15f;
+
+
+    // =========================================================
+    // SPEAK
+    // =========================================================
+
+    private void Speak(string message)
     {
+        if (string.IsNullOrWhiteSpace(message))
+            return;
+
         try
         {
+            if (!AccessibilityToggle.AccessibilityEnabled)
+                return;
+
+            // Prevent accidental duplicate speech
             if (
-                AccessibilityToggle
-                    .AccessibilityEnabled
+                message == lastSpokenMessage &&
+                Time.unscaledTime - lastSpeakTime <
+                speechCooldown
             )
             {
-                AccessibilityToggle
-                    .AccessibilitySpeech
-                    .SpeakNavigation(
-                        message
-                    );
+                return;
+            }
+
+            lastSpokenMessage = message;
+            lastSpeakTime = Time.unscaledTime;
+
+            AccessibilityToggle
+                .AccessibilitySpeech
+                .SpeakNavigation(message);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning(
+                "DesignManager Accessibility Speech Error: " +
+                exception.Message
+            );
+        }
+    }
+
+
+    // =========================================================
+    // READ CURRENT PAGE
+    // =========================================================
+
+    public void RepeatCurrentPage()
+    {
+        if (IsProcessing)
+        {
+            Speak(
+                "Please wait. The current process is still loading."
+            );
+
+            return;
+        }
+
+        // Sample Prompt
+        if (
+            samplePromptPanel != null &&
+            samplePromptPanel.activeSelf
+        )
+        {
+            Speak(
+                "Sample prompts. " +
+                "Choose sample prompt one, sample prompt two, " +
+                "or sample prompt three. " +
+                "You can close this panel to return to the idea prompt."
+            );
+
+            return;
+        }
+
+        // Prompt
+        if (
+            promptPanel != null &&
+            promptPanel.activeSelf
+        )
+        {
+            ReadPromptPage();
+            return;
+        }
+
+        // Output
+        if (
+            outputPanel != null &&
+            outputPanel.activeSelf
+        )
+        {
+            Speak(
+                "Output page. " +
+                "This page displays your generated poster. " +
+                "You can open the poster in full screen, " +
+                "go back to the idea prompt, " +
+                "or continue to the poster description."
+            );
+
+            return;
+        }
+
+        // Description
+        if (
+            descriptionPanel != null &&
+            descriptionPanel.activeSelf
+        )
+        {
+            ReadDescriptionPage();
+            return;
+        }
+
+        // Revision
+        if (
+            revisionPanel != null &&
+            revisionPanel.activeSelf
+        )
+        {
+            ReadRevisionPage();
+            return;
+        }
+
+        // Final Explanation
+        if (
+            finalExplanationPanel != null &&
+            finalExplanationPanel.activeSelf
+        )
+        {
+            ReadFinalExplanationPage();
+            return;
+        }
+
+        // Score
+        if (
+            scorePanel != null &&
+            scorePanel.activeSelf
+        )
+        {
+            ReadScore();
+            return;
+        }
+
+        // Feedback
+        if (
+            feedbackPanel != null &&
+            feedbackPanel.activeSelf
+        )
+        {
+            ReadFeedbackPage();
+            return;
+        }
+
+        Speak(
+            "Design workspace."
+        );
+    }
+
+
+    // =========================================================
+    // READ PROMPT PAGE
+    // =========================================================
+
+    public void ReadPromptPage()
+    {
+        string prompt =
+            promptInput != null
+                ? promptInput.text.Trim()
+                : "";
+
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            Speak(
+                "Idea prompt page. " +
+                "Enter your design idea in the prompt field. " +
+                "Then press Generate Poster."
+            );
+
+            return;
+        }
+
+        Speak(
+            "Idea prompt page. " +
+            "Your current design idea is: " +
+            prompt +
+            ". " +
+            "Press Generate Poster to create your poster. " +
+            "You can also open Sample Prompts in Practice Mode."
+        );
+    }
+
+
+    // =========================================================
+    // READ OUTPUT PAGE
+    // =========================================================
+
+    public void ReadOutputPage()
+    {
+        Speak(
+            "Output page. " +
+            "Your generated poster is displayed here. " +
+            "You can open the poster in full screen. " +
+            "Press Next to continue to the poster description. " +
+            "Press Back to return to the idea prompt."
+        );
+    }
+    private void SpeakFullDescription()
+    {
+        if (string.IsNullOrWhiteSpace(CurrentPosterDescription))
+        {
+            Speak(
+                "Poster description is not available."
+            );
+
+            return;
+        }
+
+        Speak(
+            "Poster description is ready. " +
+            CurrentPosterDescription
+        );
+    }
+
+    // =========================================================
+    // READ DESCRIPTION PAGE
+    // =========================================================
+
+    public void ReadDescriptionPage()
+    {
+        string description =
+            CurrentPosterDescription;
+
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            Speak(
+                "Poster description page. " +
+                "The poster description is not available yet. " +
+                "Please wait while the poster is analyzed."
+            );
+
+            return;
+        }
+
+        Speak(
+            "Poster description. " +
+            description +
+            ". " +
+            "Press Next to continue to poster revision."
+        );
+    }
+
+
+    // =========================================================
+    // READ REVISION PAGE
+    // =========================================================
+
+    public void ReadRevisionPage()
+    {
+        string revisionStatus =
+            CurrentRevisionCount +
+            " of " +
+            MAX_REVISION_COUNT +
+            " revision attempts used.";
+
+        string previousRevision =
+            LastRevisionPrompt;
+
+        if (string.IsNullOrWhiteSpace(previousRevision))
+        {
+            Speak(
+                "Poster revision page. " +
+                revisionStatus +
+                " You can enter a request to change your poster. " +
+                "Press Revise Poster to apply the change, " +
+                "or continue without revision."
+            );
+
+            return;
+        }
+
+        Speak(
+            "Poster revision page. " +
+            revisionStatus +
+            " Your latest revision request was: " +
+            previousRevision +
+            ". " +
+            "You can enter another revision request, " +
+            "or continue to the final explanation."
+        );
+    }
+
+
+    // =========================================================
+    // READ FINAL EXPLANATION PAGE
+    // =========================================================
+
+    public void ReadFinalExplanationPage()
+    {
+        string explanation =
+            finalExplanationInput != null
+                ? finalExplanationInput.text.Trim()
+                : "";
+
+        if (string.IsNullOrWhiteSpace(explanation))
+        {
+            Speak(
+                "Final explanation page. " +
+                "Explain why you designed your poster this way. " +
+                "Include the purpose of your design, " +
+                "important design choices, " +
+                "and how the design supports accessibility. " +
+                "Then press Calculate Score."
+            );
+
+            return;
+        }
+
+        Speak(
+            "Final explanation page. " +
+            "Your current explanation is: " +
+            explanation +
+            ". " +
+            "Press Calculate Score when you are ready."
+        );
+    }
+
+
+    // =========================================================
+    // READ SCORE
+    // =========================================================
+
+    public void ReadScore()
+    {
+        if (IsPracticeMode())
+        {
+            ReadPracticeScore();
+            return;
+        }
+
+        ParticipantData data =
+            ParticipantManager.Instance != null
+                ? ParticipantManager.Instance.CurrentParticipant
+                : null;
+
+        if (data == null)
+        {
+            Speak(
+                "Score information is not available."
+            );
+
+            return;
+        }
+
+        Speak(
+            BuildScoreSpeech(
+                data.promptQuality,
+                data.posterMessage,
+                data.designQuality,
+                data.accessibilityUnderstanding,
+                data.GetFinalDesignJustificationScore(),
+                data.score
+            )
+        );
+    }
+
+
+    // =========================================================
+    // READ PRACTICE SCORE
+    // =========================================================
+
+    private void ReadPracticeScore()
+    {
+        if (practiceData == null)
+        {
+            Speak(
+                "Practice score information is not available."
+            );
+
+            return;
+        }
+
+        int finalJustification =
+            practiceData.revisionProcessScore +
+            practiceData.finalExplanationScore;
+
+        Speak(
+            BuildScoreSpeech(
+                practiceData.promptQuality,
+                practiceData.posterMessage,
+                practiceData.designQuality,
+                practiceData.accessibilityUnderstanding,
+                finalJustification,
+                practiceData.score
+            )
+        );
+    }
+
+
+    // =========================================================
+    // BUILD SCORE SPEECH
+    // =========================================================
+
+    private string BuildScoreSpeech(
+        int promptScore,
+        int posterMessageScore,
+        int designScore,
+        int accessibilityScore,
+        int finalJustificationScore,
+        int totalScore)
+    {
+        StringBuilder builder =
+            new StringBuilder();
+
+        builder.Append(
+            "Score page. "
+        );
+
+        builder.Append(
+            "Your total score is " +
+            totalScore +
+            " out of 100. "
+        );
+
+        builder.Append(
+            "Prompt quality: " +
+            promptScore +
+            " out of 20. "
+        );
+
+        builder.Append(
+            "Poster message: " +
+            posterMessageScore +
+            " out of 20. "
+        );
+
+        builder.Append(
+            "Design quality: " +
+            designScore +
+            " out of 20. "
+        );
+
+        builder.Append(
+            "Accessibility understanding: " +
+            accessibilityScore +
+            " out of 20. "
+        );
+
+        builder.Append(
+            "Final design justification: " +
+            finalJustificationScore +
+            " out of 20. "
+        );
+
+        builder.Append(
+            "Press Next to hear your feedback."
+        );
+
+        return builder.ToString();
+    }
+
+
+    // =========================================================
+    // READ FEEDBACK
+    // =========================================================
+
+    public void ReadFeedback()
+    {
+        ReadFeedbackPage();
+    }
+
+
+    // =========================================================
+    // READ FEEDBACK PAGE
+    // =========================================================
+
+    private void ReadFeedbackPage()
+    {
+        string feedback = "";
+        string improvement = "";
+
+        if (IsPracticeMode())
+        {
+            if (practiceData != null)
+            {
+                feedback =
+                    practiceData.feedback ?? "";
+
+                improvement =
+                    practiceData.improvementSuggestion ?? "";
             }
         }
-        catch
+        else
         {
-            // Accessibility must never
-            // break the main workflow.
+            ParticipantData data =
+                ParticipantManager.Instance != null
+                    ? ParticipantManager.Instance.CurrentParticipant
+                    : null;
+
+            if (data != null)
+            {
+                feedback =
+                    data.feedback ?? "";
+
+                improvement =
+                    data.improvementSuggestion ?? "";
+            }
         }
+
+        if (string.IsNullOrWhiteSpace(feedback))
+        {
+            Speak(
+                "Feedback page. " +
+                "No feedback is available."
+            );
+
+            return;
+        }
+
+        string speech =
+            "Feedback. " +
+            feedback + ".";
+
+        if (!string.IsNullOrWhiteSpace(improvement))
+        {
+            speech +=
+                " Improvement suggestion. " +
+                improvement + ".";
+        }
+
+        Speak(speech);
+    }
+
+
+    // =========================================================
+    // READ ONLY FEEDBACK
+    // =========================================================
+
+    public void ReadFeedbackOnly()
+    {
+        string feedback = "";
+
+        if (IsPracticeMode())
+        {
+            if (practiceData != null)
+                feedback = practiceData.feedback ?? "";
+        }
+        else
+        {
+            ParticipantData data =
+                ParticipantManager.Instance != null
+                    ? ParticipantManager.Instance.CurrentParticipant
+                    : null;
+
+            if (data != null)
+                feedback = data.feedback ?? "";
+        }
+
+        if (string.IsNullOrWhiteSpace(feedback))
+        {
+            Speak(
+                "No feedback is available."
+            );
+
+            return;
+        }
+
+        Speak(
+            "Feedback. " +
+            feedback
+        );
+    }
+
+
+    // =========================================================
+    // READ IMPROVEMENT
+    // =========================================================
+
+    public void ReadImprovement()
+    {
+        string improvement = "";
+
+        if (IsPracticeMode())
+        {
+            if (practiceData != null)
+            {
+                improvement =
+                    practiceData.improvementSuggestion ?? "";
+            }
+        }
+        else
+        {
+            ParticipantData data =
+                ParticipantManager.Instance != null
+                    ? ParticipantManager.Instance.CurrentParticipant
+                    : null;
+
+            if (data != null)
+            {
+                improvement =
+                    data.improvementSuggestion ?? "";
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(improvement))
+        {
+            Speak(
+                "No improvement suggestions are available."
+            );
+
+            return;
+        }
+
+        Speak(
+            "Suggested improvement. " +
+            improvement
+        );
+    }
+
+
+    // =========================================================
+    // READ SCORE FEEDBACK + IMPROVEMENT
+    // =========================================================
+
+    public void ReadCompleteEvaluation()
+    {
+        ReadScore();
+
+        // Give the score speech time before feedback.
+        Invoke(
+            nameof(ReadFeedback),
+            3.0f
+        );
+
+        Invoke(
+            nameof(ReadImprovement),
+            7.0f
+        );
+    }
+
+
+    // =========================================================
+    // READ REVISION ATTEMPTS
+    // =========================================================
+
+    public void ReadRevisionAttempts()
+    {
+        int remaining =
+            MAX_REVISION_COUNT -
+            CurrentRevisionCount;
+
+        Speak(
+            "You have used " +
+            CurrentRevisionCount +
+            " of " +
+            MAX_REVISION_COUNT +
+            " revision attempts. " +
+            remaining +
+            " attempts remaining."
+        );
+    }
+
+    private void ClearStoredImageData()
+    {
+        if (ParticipantManager.Instance == null)
+            return;
+
+        ParticipantData data =
+            ParticipantManager.Instance.CurrentParticipant;
+
+        if (data == null)
+            return;
+
+        data.originalImageUrl = "";
+        data.posterImageUrl = "";
+        data.revisedImageUrl = "";
+
+        Debug.Log(
+            "DesignManager: Cleared Firestore image URL fields. Storage path preserved."
+        );
     }
 }

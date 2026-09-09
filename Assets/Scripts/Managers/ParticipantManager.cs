@@ -839,6 +839,10 @@ public class ParticipantManager : MonoBehaviour
     // SUBMIT FINAL CHALLENGE
     // =========================================================
 
+    // =========================================================
+    // SUBMIT FINAL CHALLENGE
+    // =========================================================
+
     public async Task<bool>
         SubmitCurrentChallenge()
     {
@@ -854,6 +858,10 @@ public class ParticipantManager : MonoBehaviour
         }
 
 
+        // -----------------------------------------------------
+        // CHECK ALREADY SUBMITTED
+        // -----------------------------------------------------
+
         if (CurrentParticipant.isSubmitted)
         {
             SetError(
@@ -863,6 +871,10 @@ public class ParticipantManager : MonoBehaviour
             return false;
         }
 
+
+        // -----------------------------------------------------
+        // CHECK PROMPT
+        // -----------------------------------------------------
 
         if (!CurrentParticipant.HasPrompt())
         {
@@ -874,7 +886,52 @@ public class ParticipantManager : MonoBehaviour
         }
 
 
-        if (!CurrentParticipant.HasPoster())
+        // -----------------------------------------------------
+        // CHECK POSTER
+        // -----------------------------------------------------
+        //
+        // Poster can exist as:
+        // - runtime image URL
+        // - backend storagePath
+        //
+        // The image itself does NOT need to be inside Firestore.
+        //
+        // -----------------------------------------------------
+
+        bool hasPoster =
+            CurrentParticipant.HasPoster();
+
+
+        // -----------------------------------------------------
+        // CHECK RUNTIME POSTER
+        // -----------------------------------------------------
+        //
+        // The poster image may exist only in runtime memory.
+        // It does NOT need to be stored inside Firestore.
+        //
+        // DesignManager keeps the actual image URL/Base64
+        // while ParticipantData only stores metadata/storagePath.
+        // -----------------------------------------------------
+
+        if (!hasPoster &&
+            DesignManager.Instance != null)
+        {
+            string runtimePosterUrl =
+                DesignManager.Instance.GetLatestPosterUrl();
+
+            hasPoster =
+                !string.IsNullOrWhiteSpace(runtimePosterUrl);
+
+            if (hasPoster)
+            {
+                Debug.Log(
+                    "ParticipantManager: Poster found in runtime DesignManager."
+                );
+            }
+        }
+
+
+        if (!hasPoster)
         {
             SetError(
                 "Poster is missing."
@@ -883,6 +940,10 @@ public class ParticipantManager : MonoBehaviour
             return false;
         }
 
+
+        // -----------------------------------------------------
+        // CHECK FINAL EXPLANATION
+        // -----------------------------------------------------
 
         if (!CurrentParticipant.HasFinalExplanation())
         {
@@ -922,7 +983,8 @@ public class ParticipantManager : MonoBehaviour
 
 
         Debug.Log(
-            "ParticipantManager: Challenge submitted successfully."
+            "ParticipantManager: " +
+            "Challenge submitted successfully."
         );
 
 
@@ -1220,7 +1282,7 @@ public class ParticipantManager : MonoBehaviour
     // LOAD CURRENT SUBMISSION
     // =========================================================
 
-    public async Task<bool>LoadCurrentSubmission()
+    public async Task<bool> LoadCurrentSubmission()
     {
         string accountID =
             GetCurrentAccountID();
@@ -1330,6 +1392,16 @@ public class ParticipantManager : MonoBehaviour
                 if (
                     document == null ||
                     !document.Exists
+                )
+                {
+                    continue;
+                }
+
+                // Poster image chunks share the submissions
+                // collection but are not actual submissions.
+                if (
+                    document.ContainsField("posterChunk") &&
+                    document.GetValue<bool>("posterChunk")
                 )
                 {
                     continue;
@@ -2230,189 +2302,252 @@ public class ParticipantManager : MonoBehaviour
     // FIRESTORE SUBMISSION DICTIONARY
     // =========================================================
 
+    // =========================================================
+    // FIRESTORE SUBMISSION DICTIONARY
+    // =========================================================
+    //
+    // IMPORTANT:
+    // Image data is NOT stored in Firestore.
+    //
+    // The actual poster image is stored by the AI backend.
+    // Firestore only stores the storagePath.
+    //
+    // This prevents Firestore's ~1 MiB document limit
+    // from being exceeded by Base64 image data.
+    // =========================================================
+
     private Dictionary<string, object>
         ToSubmissionDictionary(
             ParticipantData participant)
     {
         if (participant == null)
         {
-            return
-                new Dictionary<string, object>();
+            return new Dictionary<string, object>();
         }
 
 
-        return
-            new Dictionary<string, object>
-            {
-                {
-                    "accountID",
-                    participant.accountID ?? ""
-                },
+        return new Dictionary<string, object>
+    {
+        {
+            "accountID",
+            participant.accountID ?? ""
+        },
 
-                {
-                    "username",
-                    participant.username ?? ""
-                },
+        {
+            "username",
+            participant.username ?? ""
+        },
 
-                {
-                    "submissionID",
-                    participant.submissionID ?? ""
-                },
+        {
+            "submissionID",
+            participant.submissionID ?? ""
+        },
 
-                {
-                    "challengeID",
-                    participant.challengeID ?? ""
-                },
+        {
+            "challengeID",
+            participant.challengeID ?? ""
+        },
 
-                {
-                    "challengeTitle",
-                    participant.challengeTitle ?? ""
-                },
+        {
+            "challengeTitle",
+            participant.challengeTitle ?? ""
+        },
 
-                {
-                    "participantName",
-                    participant.participantName ?? ""
-                },
+        {
+            "participantName",
+            participant.participantName ?? ""
+        },
 
-                {
-                    "institution",
-                    participant.institution ?? ""
-                },
+        {
+            "institution",
+            participant.institution ?? ""
+        },
 
-                {
-                    "categoryType",
-                    participant.categoryType ?? ""
-                },
+        {
+            "categoryType",
+            participant.categoryType ?? ""
+        },
 
-                {
-                    "subCategory",
-                    participant.subCategory ?? ""
-                },
+        {
+            "subCategory",
+            participant.subCategory ?? ""
+        },
 
-                {
-                    "prompt",
-                    participant.prompt ?? ""
-                },
+        // =================================================
+        // PROMPT
+        // =================================================
 
-                {
-                    "promptUsed",
-                    participant.promptUsed ?? ""
-                },
+        {
+            "prompt",
+            participant.prompt ?? ""
+        },
 
-                {
-                    "originalImageUrl",
-                    participant.originalImageUrl ?? ""
-                },
+        {
+            "promptUsed",
+            participant.promptUsed ?? ""
+        },
 
-                {
-                    "storagePath",
-                    participant.storagePath ?? ""
-                },
 
-                {
-                    "posterDescription",
-                    participant.posterDescription ?? ""
-                },
+        // =================================================
+        // IMAGE
+        // =================================================
+        //
+        // DO NOT SAVE IMAGE DATA HERE.
+        //
+        // These fields are intentionally kept empty.
+        // The actual image is stored on the backend.
+        //
+        // =================================================
 
-                {
-                    "revisionPrompt",
-                    participant.revisionPrompt ?? ""
-                },
+        {
+            "originalImageUrl",
+            ""
+        },
 
-                {
-                    "revisionHistory",
-                    participant.revisionHistory ?? ""
-                },
+        {
+            "revisedImageUrl",
+            ""
+        },
 
-                {
-                    "revisionCount",
-                    participant.revisionCount
-                },
+        {
+            "posterImageUrl",
+            ""
+        },
 
-                {
-                    "revisedImageUrl",
-                    participant.revisedImageUrl ?? ""
-                },
 
-                {
-                    "posterImageUrl",
-                    participant.posterImageUrl ?? ""
-                },
+        // =================================================
+        // BACKEND IMAGE REFERENCE
+        // =================================================
+        //
+        // This is small text, NOT image data.
+        //
+        // =================================================
 
-                {
-                    "finalExplanation",
-                    participant.finalExplanation ?? ""
-                },
+        {
+            "storagePath",
+            participant.storagePath ?? ""
+        },
 
-                {
-                    "score",
-                    participant.score
-                },
 
-                {
-                    "promptQuality",
-                    participant.promptQuality
-                },
+        // =================================================
+        // DESCRIPTION
+        // =================================================
 
-                {
-                    "posterMessage",
-                    participant.posterMessage
-                },
+        {
+            "posterDescription",
+            participant.posterDescription ?? ""
+        },
 
-                {
-                    "designQuality",
-                    participant.designQuality
-                },
 
-                {
-                    "accessibilityUnderstanding",
-                    participant.accessibilityUnderstanding
-                },
+        // =================================================
+        // REVISION
+        // =================================================
 
-                {
-                    "revisionProcessScore",
-                    participant.revisionProcessScore
-                },
+        {
+            "revisionPrompt",
+            participant.revisionPrompt ?? ""
+        },
 
-                {
-                    "finalExplanationScore",
-                    participant.finalExplanationScore
-                },
+        {
+            "revisionHistory",
+            participant.revisionHistory ?? ""
+        },
 
-                {
-                    "feedback",
-                    participant.feedback ?? ""
-                },
+        {
+            "revisionCount",
+            participant.revisionCount
+        },
 
-                {
-                    "improvementSuggestion",
-                    participant.improvementSuggestion ?? ""
-                },
 
-                // =================================================
-                // ONLY SUBMISSION STATUS FIELD
-                // =================================================
+        // =================================================
+        // FINAL EXPLANATION
+        // =================================================
 
-                {
-                    "isSubmitted",
-                    participant.isSubmitted
-                },
+        {
+            "finalExplanation",
+            participant.finalExplanation ?? ""
+        },
 
-                {
-                    "completedDate",
-                    participant.completedDate ?? ""
-                },
 
-                {
-                    "lastPage",
-                    participant.lastPage ?? ""
-                },
+        // =================================================
+        // SCORE
+        // =================================================
 
-                {
-                    "eventCode",
-                    participant.eventCode ?? ""
-                }
-            };
+        {
+            "score",
+            participant.score
+        },
+
+        {
+            "promptQuality",
+            participant.promptQuality
+        },
+
+        {
+            "posterMessage",
+            participant.posterMessage
+        },
+
+        {
+            "designQuality",
+            participant.designQuality
+        },
+
+        {
+            "accessibilityUnderstanding",
+            participant.accessibilityUnderstanding
+        },
+
+        {
+            "revisionProcessScore",
+            participant.revisionProcessScore
+        },
+
+        {
+            "finalExplanationScore",
+            participant.finalExplanationScore
+        },
+
+
+        // =================================================
+        // FEEDBACK
+        // =================================================
+
+        {
+            "feedback",
+            participant.feedback ?? ""
+        },
+
+        {
+            "improvementSuggestion",
+            participant.improvementSuggestion ?? ""
+        },
+
+
+        // =================================================
+        // SUBMISSION STATUS
+        // =================================================
+
+        {
+            "isSubmitted",
+            participant.isSubmitted
+        },
+
+        {
+            "completedDate",
+            participant.completedDate ?? ""
+        },
+
+        {
+            "lastPage",
+            participant.lastPage ?? ""
+        },
+
+        {
+            "eventCode",
+            participant.eventCode ?? ""
+        }
+    };
     }
 
 
@@ -2473,14 +2608,42 @@ public class ParticipantManager : MonoBehaviour
         submission.promptUsed =
             GetString(document, "promptUsed");
 
-        submission.originalImageUrl =
-            GetString(document, "originalImageUrl");
+        // =====================================================
+        // IMAGES / STORAGE
+        // =====================================================
+        //
+        // IMPORTANT:
+        // Actual image data is NOT loaded from Firestore.
+        //
+        // Firestore only stores the backend storagePath.
+        // Image URLs/Base64 are runtime-only values.
+        //
+        // =====================================================
+
+        submission.originalImageUrl = "";
+
+        submission.revisedImageUrl = "";
+
+        submission.posterImageUrl = "";
 
         submission.storagePath =
-            GetString(document, "storagePath");
+            GetString(
+                document,
+                "storagePath"
+            );
+
+
+        // =====================================================
+        // DESCRIPTION
+        // =====================================================
 
         submission.posterDescription =
             GetString(document, "posterDescription");
+
+
+        // =====================================================
+        // REVISION
+        // =====================================================
 
         submission.revisionPrompt =
             GetString(document, "revisionPrompt");
@@ -2490,12 +2653,6 @@ public class ParticipantManager : MonoBehaviour
 
         submission.revisionCount =
             GetInt(document, "revisionCount");
-
-        submission.revisedImageUrl =
-            GetString(document, "revisedImageUrl");
-
-        submission.posterImageUrl =
-            GetString(document, "posterImageUrl");
 
         submission.finalExplanation =
             GetString(document, "finalExplanation");

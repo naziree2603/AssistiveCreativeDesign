@@ -39,10 +39,10 @@
 
 //    void Start()
 //    {
-        
+
 //    }
 
-  
+
 
 //    void WelcomeSpeech()
 //    {
@@ -84,7 +84,7 @@
 
 //            "Step 1. Enter Participant Details. " +
 //            "Fill in your name, institution, and competition category. " +
-            
+
 
 //            "Step 2. Create a Poster Prompt. " +
 //            "Describe your poster idea using text or voice. " +
@@ -188,7 +188,7 @@
 
 //        posterSystem.CloseAllPanels();
 
-//        mainMenuPanel.SetActive(true); 
+//        mainMenuPanel.SetActive(true);
 //    }
 
 //    public void OpenChallengePanel()
@@ -258,7 +258,7 @@
 //        leaderboardPanel.SetActive(false);
 //        submittedPanel.SetActive(true);
 
-//        SubmittedManager manager = submittedPanel.GetComponent<SubmittedManager>(); 
+//        SubmittedManager manager = submittedPanel.GetComponent<SubmittedManager>();
 
 //        manager.LoadSubmitted();
 //    }

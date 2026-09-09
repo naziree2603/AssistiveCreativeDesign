@@ -214,6 +214,12 @@ public class StartupManager : MonoBehaviour
         ShowOnly(
             welcomePanel
         );
+
+        Speak(
+            "Welcome to AI Assistive Design. " +
+            "This application helps users create accessible poster designs. " +
+            "Choose Login to sign in, or Register to create a new account."
+        );
     }
 
 
@@ -293,6 +299,22 @@ public class StartupManager : MonoBehaviour
         if (target != null)
         {
             target.SetActive(true);
+        }
+    }
+
+    private void Speak(string message)
+    {
+        try
+        {
+            if (!AccessibilityToggle.AccessibilityEnabled)
+                return;
+
+            AccessibilityToggle
+                .AccessibilitySpeech
+                .SpeakNavigation(message);
+        }
+        catch
+        {
         }
     }
 }

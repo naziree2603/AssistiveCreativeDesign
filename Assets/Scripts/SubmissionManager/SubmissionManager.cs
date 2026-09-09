@@ -721,7 +721,7 @@ public class SubmissionManager : MonoBehaviour
     //
     // =========================================================
 
-    public void OpenSubmission(
+    public async void OpenSubmission(
     SubmissionData submission)
     {
         if (submission == null)
@@ -791,6 +791,13 @@ public class SubmissionManager : MonoBehaviour
         {
             DesignManager.Instance
                 .SetSubmittedViewMode(true);
+
+            // Restore the poster from local storage or the
+            // Firestore poster chunks before opening the score
+            // page. This makes submitted designs viewable on
+            // another device using the same account.
+            await DesignManager.Instance
+                .RestoreCurrentSubmissionPosterAsync();
         }
 
 
@@ -835,7 +842,7 @@ public class SubmissionManager : MonoBehaviour
             null;
     }
 
-   
+
 
 
     // =========================================================

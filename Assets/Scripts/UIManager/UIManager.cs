@@ -188,6 +188,12 @@ public class UIManager : MonoBehaviour
         Debug.Log(
             "UIManager: Login"
         );
+
+        Speak(
+            "Login page. " +
+            "Enter your username and password. " +
+            "Press Login to continue, or Register to create a new account."
+        );
     }
 
 
@@ -211,6 +217,11 @@ public class UIManager : MonoBehaviour
         Debug.Log(
             "UIManager: Register"
         );
+
+        Speak(
+            "Registration page. " +
+            "Enter your username and password, then press Register."
+        );
     }
 
 
@@ -233,6 +244,13 @@ public class UIManager : MonoBehaviour
 
         Debug.Log(
             "UIManager: Main Dashboard"
+        );
+
+        Speak(
+            "Main Dashboard. " +
+            "You can start a challenge, enter participant details, " +
+            "view the leaderboard, view submitted work, " +
+            "open settings, or log out."
         );
     }
 
@@ -371,6 +389,11 @@ public class UIManager : MonoBehaviour
             CompetitionManager.Instance
                 .OpenCompetition();
         }
+
+        Speak(
+            "Challenge page. " +
+            "Choose an available challenge to begin."
+        );
     }
 
 
@@ -393,6 +416,11 @@ public class UIManager : MonoBehaviour
 
         Debug.Log(
             "UIManager: Participant"
+        );
+
+        Speak(
+            "Participant details page. " +
+            "Enter your participant information and press Save to continue."
         );
     }
 
@@ -584,13 +612,68 @@ public class UIManager : MonoBehaviour
         );
 
 
+        // -----------------------------------------------------
+        // SET CURRENT CHALLENGE
+        // -----------------------------------------------------
+
         if (
+            ParticipantManager.Instance != null &&
             LeaderboardManager.Instance != null
         )
         {
-            LeaderboardManager.Instance
-                .LoadLeaderboard();
+            string challengeID =
+                ParticipantManager.Instance.CurrentChallengeID;
+
+            string challengeTitle =
+                ParticipantManager.Instance.CurrentChallengeTitle;
+
+
+            Debug.Log(
+                "UIManager: Opening leaderboard for challenge: " +
+                challengeID +
+                " | " +
+                challengeTitle
+            );
+
+
+            if (
+                string.IsNullOrWhiteSpace(
+                    challengeID
+                )
+            )
+            {
+                Debug.LogError(
+                    "UIManager: Current Challenge ID is EMPTY. " +
+                    "Leaderboard cannot determine which challenge to load."
+                );
+            }
+            else
+            {
+                LeaderboardManager.Instance.SetChallenge(
+                    challengeID,
+                    challengeTitle
+                );
+            }
+
+
+            // -------------------------------------------------
+            // LOAD LEADERBOARD
+            // -------------------------------------------------
+
+            LeaderboardManager.Instance.LoadLeaderboard();
         }
+        else
+        {
+            Debug.LogError(
+                "UIManager: ParticipantManager or LeaderboardManager is NULL."
+            );
+        }
+
+
+        Speak(
+            "Leaderboard page. " +
+            "Your participant ranking and scores are displayed here."
+        );
     }
 
 
@@ -643,6 +726,13 @@ public class UIManager : MonoBehaviour
 
         Debug.Log(
             "UIManager: Settings"
+        );
+
+        Speak(
+            "Settings page. " +
+            "You can configure accessibility, read How To Play, " +
+            "view About, Privacy Policy, Terms and Conditions, " +
+            "or delete your account."
         );
     }
 
@@ -1045,6 +1135,10 @@ public class UIManager : MonoBehaviour
 
     public void Logout()
     {
+        Speak(
+            "Logging out. Returning to the welcome screen."
+        );
+
         if (
             AccountManager.Instance != null
         )
@@ -1363,6 +1457,12 @@ public class UIManager : MonoBehaviour
         Debug.Log(
             "UIManager: Leave Challenge popup opened."
         );
+
+        Speak(
+        "Leave challenge confirmation. " +
+        "Are you sure you want to leave this challenge? " +
+        "Choose Confirm to leave or Cancel to continue."
+    );
     }
 
     public void CloseLoadingPanel()
@@ -1372,5 +1472,159 @@ public class UIManager : MonoBehaviour
         Debug.Log(
             "UIManager: Loading panel closed."
         );
+    }
+
+    public void ExitApplication()
+    {
+        Speak(
+            "Exiting the application."
+        );
+
+        Debug.Log(
+            "Exiting application..."
+        );
+
+        #if UNITY_EDITOR
+
+                UnityEditor.EditorApplication.isPlaying = false;
+
+        #elif UNITY_ANDROID
+
+            Application.Quit();
+
+        #else
+
+            Application.Quit();
+
+        #endif
+    }
+
+    // =========================================================
+    // ACCESSIBILITY / TALKBACK
+    // =========================================================
+
+    private void Speak(string message)
+    {
+        try
+        {
+            if (!AccessibilityToggle.AccessibilityEnabled)
+                return;
+
+            AccessibilityToggle
+                .AccessibilitySpeech
+                .SpeakNavigation(message);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning(
+                "UIManager Accessibility Speech Error: " +
+                exception.Message
+            );
+        }
+    }
+
+
+    // =========================================================
+    // REPEAT CURRENT MAIN PAGE
+    // =========================================================
+
+    public void RepeatCurrentPage()
+    {
+        if (IsActive(loginPanel))
+        {
+            Speak(
+                "Login page. " +
+                "Enter your username and password, " +
+                "then press Login. " +
+                "You can also choose Register to create a new account."
+            );
+
+            return;
+        }
+
+        if (IsActive(registerPanel))
+        {
+            Speak(
+                "Registration page. " +
+                "Enter your account information and press Register."
+            );
+
+            return;
+        }
+
+        if (IsActive(mainMenuPanel))
+        {
+            Speak(
+                "Main Dashboard. " +
+                "You can open a challenge, enter participant details, " +
+                "view the leaderboard, view your submissions, " +
+                "open settings, or log out."
+            );
+
+            return;
+        }
+
+        if (IsActive(challengePanel))
+        {
+            Speak(
+                "Challenge page. " +
+                "Choose an available challenge and join it to begin."
+            );
+
+            return;
+        }
+
+        if (IsActive(participantPanel))
+        {
+            Speak(
+                "Participant details page. " +
+                "Enter your participant information and save to continue."
+            );
+
+            return;
+        }
+
+        if (IsActive(designWorkspacePanel))
+        {
+            if (DesignManager.Instance != null)
+            {
+                DesignManager.Instance
+                    .RepeatCurrentPage();
+            }
+
+            return;
+        }
+
+        if (IsActive(leaderboardPanel))
+        {
+            Speak(
+                "Leaderboard page. " +
+                "This page shows participant rankings and scores."
+            );
+
+            return;
+        }
+
+        if (IsActive(submittedPanel))
+        {
+            Speak(
+                "Submitted work page. " +
+                "This page shows your submitted challenge work."
+            );
+
+            return;
+        }
+
+        if (IsActive(settingsPanel))
+        {
+            Speak(
+                "Settings page. " +
+                "You can access accessibility settings, " +
+                "How To Play, About, Privacy Policy, " +
+                "and delete account."
+            );
+
+            return;
+        }
     }
 }
