@@ -1,4 +1,5 @@
 using UnityEngine;
+using TMPro;
 using UnityEngine.UI;
 
 /// <summary>
@@ -25,6 +26,10 @@ public class IIADVoiceGuide : MonoBehaviour
     public float frameThickness = 6f;
     public float framePadding = 6f;
 
+    [Header("Editor")]
+    [Tooltip("In the Unity Editor, mouse clicks keep working normally while Voice Guide is on (use Tab / arrows / Enter to test Voice Guide). On a phone, taps are always handled by Voice Guide.")]
+    public bool letMouseClickThroughInEditor = true;
+
     [Header("Gestures")]
     [Tooltip("Minimum swipe length in density-independent pixels.")]
     public float swipeDistanceDp = 50f;
@@ -36,6 +41,7 @@ public class IIADVoiceGuide : MonoBehaviour
     IIADAccessibleElement focused;
     Canvas overlay;
     GameObject blocker;
+    GameObject banner;
     RectTransform frame;
     readonly Image[] edges = new Image[4];
 
@@ -241,7 +247,10 @@ public class IIADVoiceGuide : MonoBehaviour
     void Update()
     {
         bool active = IIADSpeech.IsVoiceGuideActive;
-        if (blocker != null && blocker.activeSelf != active) blocker.SetActive(active);
+        bool editorPassThrough = Application.isEditor && letMouseClickThroughInEditor;
+        bool block = active && !editorPassThrough;
+        if (blocker != null && blocker.activeSelf != block) blocker.SetActive(block);
+        if (banner != null && banner.activeSelf != active) banner.SetActive(active);
         UpdateFrame(active);
 
 #if ENABLE_LEGACY_INPUT_MANAGER
@@ -263,7 +272,7 @@ public class IIADVoiceGuide : MonoBehaviour
             var t = Input.GetTouch(0);
             pos = t.position; down = t.phase == TouchPhase.Began; up = t.phase == TouchPhase.Ended; held = !up && t.phase != TouchPhase.Canceled;
         }
-        else if (Input.touchCount == 0 && Application.isEditor)
+        else if (Input.touchCount == 0 && Application.isEditor && !letMouseClickThroughInEditor)
         {
             pos = Input.mousePosition; down = Input.GetMouseButtonDown(0); up = Input.GetMouseButtonUp(0); held = Input.GetMouseButton(0);
         }
@@ -361,6 +370,10 @@ public class IIADVoiceGuide : MonoBehaviour
         overlay = go.GetComponent<Canvas>();
         overlay.renderMode = RenderMode.ScreenSpaceOverlay;
         overlay.sortingOrder = 32000;
+        var scaler = go.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1080, 1920);
+        scaler.matchWidthOrHeight = 0.5f;
 
         blocker = new GameObject("Tap Blocker", typeof(RectTransform), typeof(Image));
         blocker.transform.SetParent(go.transform, false);
@@ -369,6 +382,23 @@ public class IIADVoiceGuide : MonoBehaviour
         img.color = new Color(0, 0, 0, 0);
         img.raycastTarget = true;
         blocker.SetActive(false);
+
+        // Always-visible strip so nobody thinks the app froze: tap it to turn Voice Guide off
+        banner = new GameObject("Voice Guide Banner", typeof(RectTransform), typeof(Image), typeof(Button));
+        banner.transform.SetParent(go.transform, false);
+        var brt = (RectTransform)banner.transform;
+        brt.anchorMin = new Vector2(0, 0); brt.anchorMax = new Vector2(1, 0); brt.pivot = new Vector2(0.5f, 0);
+        brt.anchoredPosition = Vector2.zero; brt.sizeDelta = new Vector2(0, 112);
+        banner.GetComponent<Image>().color = new Color32(0xFF, 0xC2, 0x33, 0xF2);
+        banner.GetComponent<Button>().onClick.AddListener(() => IIADSpeech.VoiceGuideEnabled = false);
+        var label = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        label.transform.SetParent(banner.transform, false);
+        Stretch((RectTransform)label.transform);
+        var tmp = label.GetComponent<TextMeshProUGUI>();
+        tmp.text = "<b>Voice Guide is on</b>  ·  double-tap to select  ·  tap here to turn off";
+        tmp.fontSize = 34; tmp.alignment = TextAlignmentOptions.Center; tmp.color = new Color32(0x0B, 0x16, 0x30, 0xFF);
+        tmp.raycastTarget = false;
+        banner.SetActive(false);
 
         var f = new GameObject("Focus Frame", typeof(RectTransform));
         f.transform.SetParent(go.transform, false);

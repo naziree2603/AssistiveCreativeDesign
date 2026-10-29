@@ -24,7 +24,7 @@ using UnityEngine.UI;
 /// OnClick keeps working. One Undo step (Ctrl+Z). Run on the original scene (git checkout first if
 /// you saved an earlier restyle).
 /// </summary>
-public static class IIADNeonRestyle
+public static partial class IIADNeonRestyle
 {
     // ---------------------------------------------------------------- palette
     static readonly Color Navy = Hex("#0B1630");
@@ -58,13 +58,8 @@ public static class IIADNeonRestyle
     {
         var container = FindInScene("ScreenContainer");
         if (container == null) { EditorUtility.DisplayDialog("Build Neon UI", "Open Assets/Scenes/UI/MainUI.unity first.", "OK"); return; }
-        if (container.GetComponentsInChildren<Transform>(true).Any(t => t.name == ContentName))
-        {
-            EditorUtility.DisplayDialog("Build Neon UI", "This scene was already restyled. Revert it first:\n\nFile > Open Scene without saving, or run 'git checkout Assets/Scenes/UI/MainUI.unity', then run this again.", "OK");
-            return;
-        }
         if (!EditorUtility.DisplayDialog("Build Neon UI (all screens)",
-            "Rebuilds every screen, popup and list card to the IIAD Neon design.\n\nOne Undo step (Ctrl+Z). Commit to Git first.", "Build", "Cancel")) return;
+            "Rebuilds every screen, popup and list card to the IIAD Neon design. Pages fit the screen with no scrolling. Works on the original scene or on an earlier restyle.\n\nOne Undo step (Ctrl+Z). Commit to Git first.", "Build", "Cancel")) return;
 
         log = new StringBuilder();
         EnsureSprites();
@@ -86,6 +81,8 @@ public static class IIADNeonRestyle
         StylePrefab("Assets/Data/Prefabs/ParticipantRankCard.prefab");
         StylePrefab("Assets/Data/Prefabs/SubmittedCard.prefab");
         IIADNeonLogo.ApplyToOpenScenes(true);
+        IIADNeonIcons.ApplyToOpenScenes();
+        IIADChallengePanelFix.Apply();   // join-event screen uses its own fixed layout
 
         Canvas.ForceUpdateCanvases();
         Debug.Log("IIAD Neon UI built.\n" + log);
@@ -143,8 +140,8 @@ public static class IIADNeonRestyle
 
         // ---------- Main dashboard
         Screen(c, "MainDashboard", new string[0], new[] { "Header/AccessibilityButton", "Header/SettingsButton", "Header/ProfileButton", "Header/LogOutButton" }, new N[] {
-            H("Logo/LogoImage", 300, 300),
-            Hide("Logo/LogoTitle"),
+            H("Logo/LogoImage", 260, 260),
+            H("Logo/LogoTitle", 760, 116),
             T("WelcomeSection/UsernameWelcomeText", 60, Tone.Title, TextAlignmentOptions.Center, 90),
             Menu("GroupButtons",
                 B("GroupButtons/PracticeModeButton", K.Menu, MenuH),
@@ -337,6 +334,7 @@ public static class IIADNeonRestyle
         var s = container.Find(path) as RectTransform;
         if (s == null) { log.AppendLine("! screen not found: " + path); return; }
         screenRoot = s;
+        Unwrap(s);
         used = new HashSet<Transform>();
         map = new Dictionary<string, RectTransform>();
         foreach (var t in s.GetComponentsInChildren<RectTransform>(true))
@@ -377,30 +375,67 @@ public static class IIADNeonRestyle
         catch (System.Exception e) { log.AppendLine("! " + path + ": " + e.Message); Debug.LogException(e); }
     }
 
+    /// <summary>Page area between header and footer. No scrolling: the content shrinks evenly to fit.</summary>
     static RectTransform BuildScroll(RectTransform screen, float top, float bottom)
     {
-        var scroll = NewRect(ContentName, screen);
+        var area = NewRect(ContentName, screen);
         var hdr = screen.Find("Header");
-        scroll.SetSiblingIndex(hdr != null ? hdr.GetSiblingIndex() + 1 : 0);
-        Stretch(scroll); scroll.offsetMin = new Vector2(0, bottom); scroll.offsetMax = new Vector2(0, -top);
-        var hit = Undo.AddComponent<Image>(scroll.gameObject); hit.color = new Color(0, 0, 0, 0);
+        area.SetSiblingIndex(hdr != null ? hdr.GetSiblingIndex() + 1 : 0);
+        Stretch(area); area.offsetMin = new Vector2(0, bottom); area.offsetMax = new Vector2(0, -top);
 
-        var viewport = NewRect("Viewport", scroll); Stretch(viewport);
-        Undo.AddComponent<RectMask2D>(viewport.gameObject);
-
-        var content = NewRect("Content", viewport);
+        var content = NewRect("Content", area);
         content.anchorMin = new Vector2(0, 1); content.anchorMax = new Vector2(1, 1);
         content.pivot = new Vector2(0.5f, 1); content.anchoredPosition = Vector2.zero; content.sizeDelta = Vector2.zero;
         var vl = Undo.AddComponent<VerticalLayoutGroup>(content.gameObject);
-        vl.padding = new RectOffset((int)Side, (int)Side, 16, 72);
+        vl.padding = new RectOffset((int)Side, (int)Side, 12, 24);
         Column(vl, Gap);
         var fit = Undo.AddComponent<ContentSizeFitter>(content.gameObject);
         fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        var sr = Undo.AddComponent<ScrollRect>(scroll.gameObject);
-        sr.viewport = viewport; sr.content = content; sr.horizontal = false; sr.vertical = true;
-        sr.movementType = ScrollRect.MovementType.Clamped; sr.scrollSensitivity = 40f;
+        var f = Undo.AddComponent<IIADFitToViewport>(content.gameObject);
+        f.viewport = area; f.minScale = 0.55f; f.centerVertically = true;
         return content;
+    }
+
+    /// <summary>
+    /// Undoes the containers made by earlier restyles (scroll views, rows, holders), putting every
+    /// original object back directly under the screen so the recipe can place it again.
+    /// </summary>
+    static void Unwrap(RectTransform screen)
+    {
+        // a) page containers: IIAD_Content (+ Viewport) -> move their content up
+        foreach (var page in Children(screen).Where(c => c.name == ContentName || c.name == "IIAD_Page").ToList())
+        {
+            var inner = page.GetComponentsInChildren<RectTransform>(true).FirstOrDefault(t => t.name == "Content" && t != page);
+            var source = inner != null ? inner : page;
+            foreach (var c in Children(source).ToList()) { Undo.SetTransformParent(c, screen, "IIAD"); c.localScale = Vector3.one; }
+            Undo.DestroyObjectImmediate(page.gameObject);
+        }
+        // b) helper wrappers anywhere in the screen: move children up, delete wrapper
+        bool again = true;
+        while (again)
+        {
+            again = false;
+            foreach (var w in screen.GetComponentsInChildren<RectTransform>(true))
+            {
+                if (w == screen || !IsWrapper(w)) continue;
+                var parent = w.parent; int idx = w.GetSiblingIndex();
+                foreach (var c in Children(w).ToList()) { Undo.SetTransformParent(c, parent, "IIAD"); c.SetSiblingIndex(idx++); c.localScale = Vector3.one; }
+                Undo.DestroyObjectImmediate(w.gameObject);
+                again = true; break;
+            }
+        }
+        // c) leftover header spacer from the first tool
+        var hdr = screen.Find("Header");
+        if (hdr != null) foreach (var sp in Children(hdr).Where(c => c.name == "Spacer").ToList()) Undo.DestroyObjectImmediate(sp.gameObject);
+    }
+
+    static bool IsWrapper(RectTransform t)
+    {
+        string n = t.name;
+        if (n.StartsWith("IIAD_Holder") || n == "IIAD_Row" || n == "IIAD_Pages" || n == "IIAD_Gap") return true;
+        // the first tool made plain "Row" objects with only a HorizontalLayoutGroup
+        if (n == "Row" && t.GetComponent<HorizontalLayoutGroup>() != null && t.GetComponents<Component>().Length <= 3) return true;
+        return false;
     }
 
     static void BuildHeader(RectTransform h, string[] left, string[] right)
@@ -468,8 +503,29 @@ public static class IIADNeonRestyle
     static RectTransform Get(string path)
     {
         if (map.TryGetValue(path, out var t) && t != null) return t;
+        var found = FindByName(path);
+        if (found != null) return found;
         log.AppendLine("  ? " + screenRoot.name + ": '" + path + "' not found (skipped)");
         return null;
+    }
+
+    /// <summary>Finds an object by its own name when an earlier restyle moved it; prefers the longest matching path ending.</summary>
+    static RectTransform FindByName(string path)
+    {
+        var parts = path.Split('/');
+        string last = parts[parts.Length - 1];
+        RectTransform best = null; int bestScore = -1;
+        foreach (var kv in map)
+        {
+            if (kv.Value == null || kv.Value.name != last) continue;
+            var kp = kv.Key.Split('/');
+            int score = 0;
+            for (int i = 1; i <= Mathf.Min(parts.Length, kp.Length); i++) { if (parts[parts.Length - i] == kp[kp.Length - i]) score++; else break; }
+            // also count matching parent names anywhere in the path (object moved into a new container)
+            score = score * 10 + parts.Count(pn => kp.Contains(pn));
+            if (score > bestScore) { bestScore = score; best = kv.Value; }
+        }
+        return best;
     }
 
     static RectTransform Place(string path, RectTransform parent)
@@ -669,7 +725,8 @@ public static class IIADNeonRestyle
         public string p;
         public override void Build(RectTransform parent)
         {
-            if (!map.TryGetValue(p, out var t) || t == null) return;
+            if (!map.TryGetValue(p, out var t) || t == null) t = FindByName(p);
+            if (t == null) return;
             used.Add(t);
             // never hide something a script uses or anything containing controls / text that is still needed
             if (t.GetComponentsInChildren<Selectable>(true).Any(s => !used.Contains(s.transform)) && !t.GetComponentsInChildren<Selectable>(true).All(s => used.Contains(s.transform)))
@@ -814,6 +871,12 @@ public static class IIADNeonRestyle
         {
             var box = pop.Find("Box") as RectTransform;
             if (box == null) continue;
+            // rerun: take Yes / No back out of the row made last time
+            foreach (var oldRow in Children(box).Where(c => c.name == "IIAD_Row").ToList())
+            {
+                foreach (var c in Children(oldRow).ToList()) Undo.SetTransformParent(c, pop, "IIAD");
+                Undo.DestroyObjectImmediate(oldRow.gameObject);
+            }
             var dim = pop.GetComponent<Image>();
             if (dim != null && dim.sprite == null) { Undo.RecordObject(dim, "IIAD"); dim.color = new Color(0.02f, 0.04f, 0.1f, 0.78f); }
 

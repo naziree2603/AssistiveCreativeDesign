@@ -29,8 +29,8 @@ public static class IIADNeonLogo
     /// <summary>Returns how many images were changed.</summary>
     public static int ApplyToOpenScenes(bool includePrefabs)
     {
-        var logo = LoadSprite(NewLogo, 1024);
-        var word = LoadSprite(NewWordmark, 2048);
+        var logo = IIADNeonIcons.Load(NewLogo, 1024);
+        var word = IIADNeonIcons.Load(NewWordmark, 2048);
         if (logo == null || word == null) { Debug.LogWarning("IIAD: neon logo files are missing in Assets/Arts/NEW UI/IIAD Neon."); return 0; }
 
         int count = 0;
@@ -68,10 +68,21 @@ public static class IIADNeonLogo
 
     static bool Swap(Image img, Sprite logo, Sprite word, bool undo)
     {
-        if (img == null || img.sprite == null) return false;
-        string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(img.sprite));
-        Sprite target = guid == OldLogoGuid ? logo : guid == OldWordmarkGuid ? word : null;
-        if (target == null) return false;
+        if (img == null) return false;
+        Sprite target = null;
+        string n = img.name.ToLowerInvariant();
+        if (img.sprite != null)
+        {
+            string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(img.sprite));
+            string logoGuid = AssetDatabase.AssetPathToGUID(NewLogo), wordGuid = AssetDatabase.AssetPathToGUID(NewWordmark);
+            if (guid == OldLogoGuid || guid == logoGuid) target = logo;
+            else if (guid == OldWordmarkGuid || guid == wordGuid) target = word;   // also repairs the auto-sliced "A" sprite
+        }
+        else if (n.Contains("logo") && !n.Contains("goolee"))
+        {   // reference lost when the auto-sliced sprite was replaced by a single sprite
+            target = n.Contains("title") || n.Contains("appslogo") ? word : logo;
+        }
+        if (target == null || img.sprite == target) return false;
         if (undo) Undo.RecordObject(img, "IIAD Neon Logo");
         img.sprite = target;
         img.type = Image.Type.Simple;
@@ -80,21 +91,4 @@ public static class IIADNeonLogo
         return true;
     }
 
-    static Sprite LoadSprite(string path, int maxSize)
-    {
-        var imp = AssetImporter.GetAtPath(path) as TextureImporter;
-        if (imp == null) return null;
-        if (imp.textureType != TextureImporterType.Sprite || imp.maxTextureSize != maxSize)
-        {
-            imp.textureType = TextureImporterType.Sprite;
-            imp.spriteImportMode = SpriteImportMode.Single;
-            imp.alphaIsTransparency = true;
-            imp.mipmapEnabled = true;                 // stays smooth when shown small
-            imp.filterMode = FilterMode.Trilinear;
-            imp.maxTextureSize = maxSize;
-            imp.textureCompression = TextureImporterCompression.Uncompressed;
-            imp.SaveAndReimport();
-        }
-        return AssetDatabase.LoadAssetAtPath<Sprite>(path);
-    }
 }
