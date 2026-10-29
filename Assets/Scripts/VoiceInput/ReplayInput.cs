@@ -19,7 +19,7 @@ public class ReplayInput : MonoBehaviour
             return;
         }
 
-        AndroidTTS.StopSpeaking();
+        IIADSpeech.Stop();
         AccessibilityToggle.AccessibilitySpeech.SpeakNavigation(text);
     }
 }

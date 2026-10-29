@@ -30,7 +30,7 @@ public class GlobalGestureManager : MonoBehaviour
 
     void StopSpeech()
     {
-        UAP_AccessibilityManager.StopSpeaking();
+        IIADSpeech.Stop();
 
         Debug.Log("Speech Stopped");
     }

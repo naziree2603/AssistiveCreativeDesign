@@ -381,17 +381,7 @@ public class SpeechManager : MonoBehaviour
     {
         try
         {
-            /*
-             * The actual TTS implementation is handled by
-             * AccessibilityToggle.
-             *
-             * If your AccessibilityToggle exposes a Stop()
-             * method, it can be called here.
-             *
-             * We intentionally don't call an unknown method
-             * so this manager remains compatible with the
-             * current AccessibilityToggle script.
-             */
+            IIADSpeech.Stop();
         }
         catch (Exception exception)
         {
@@ -465,6 +455,8 @@ public class SpeechManager : MonoBehaviour
 
     private void ApplySpeechRate()
     {
+        IIADSpeech.Rate = speechRate;
+
         /*
          * Your existing AccessibilityToggle /
          * AndroidTTS implementation controls the actual

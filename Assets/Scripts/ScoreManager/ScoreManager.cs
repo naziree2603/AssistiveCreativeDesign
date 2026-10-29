@@ -986,7 +986,7 @@ public class ScoreManager : MonoBehaviour
         // -----------------------------------------------------
 
         if (
-            UAP_AccessibilityManager.IsEnabled()
+            IIADSpeech.IsAnyOutputOn
         )
         {
             SpeakScore();
@@ -1034,7 +1034,7 @@ public class ScoreManager : MonoBehaviour
 
 
         if (
-            UAP_AccessibilityManager.IsEnabled()
+            IIADSpeech.IsAnyOutputOn
         )
         {
             SpeakFeedback();

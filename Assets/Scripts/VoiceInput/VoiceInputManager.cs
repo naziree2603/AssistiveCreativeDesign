@@ -79,7 +79,7 @@ public class VoiceInputManager : MonoBehaviour
     {
         Handheld.Vibrate();
 
-        AndroidTTS.StopSpeaking();
+        IIADSpeech.Stop();
 
         if (voiceLoadingPanel != null)
         {
