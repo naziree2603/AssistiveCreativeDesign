@@ -10,23 +10,23 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
-/// Tools > IIAD > Restyle MainUI (Dark Neon)
+/// Tools > IIAD > Build Neon UI (all screens)
 ///
-/// Rebuilds the layout and button design of every screen under Canvas/ScreenContainer:
-///   - Header bar at the top (back on the left, accessibility / home / settings on the right)
-///   - Scrollable content column in the middle, ordered top to bottom as before
-///   - Footer bar pinned to the bottom with full-width Previous / Next buttons
-///   - Login, Register, Challenge and Participant forms: label above a large field
-///   - Rounded buttons: yellow main action, cyan outline secondary, coral danger, round icon buttons
-///   - Dark rounded cards with a thin cyan edge instead of the old frame images
-///   - Lexend font, 48 dp minimum touch size, larger text
+/// Rebuilds every screen of MainUI to match the IIAD Neon preview, using an explicit recipe
+/// per screen (not guesswork):
+///   Header   190 high: back on the left, round icon buttons on the right
+///   Content  one scrolling column, 48 side margin, dark cards with a cyan edge
+///   Footer   210 high: full-width Previous / Next (Next is yellow)
+/// Buttons: yellow = main action, cyan outline = secondary, coral = exit / delete,
+/// round 44 dp icon buttons, 52 dp minimum height, Lexend font.
 ///
-/// Everything is one Undo step (Ctrl+Z). Only references by object are used in your scripts
-/// (no transform.Find), so moving objects into the new containers keeps them working.
+/// Your existing objects are re-used and moved, never re-created, so every script reference and
+/// OnClick keeps working. One Undo step (Ctrl+Z). Run on the original scene (git checkout first if
+/// you saved an earlier restyle).
 /// </summary>
 public static class IIADNeonRestyle
 {
-    // ------------------------------------------------------------------ palette
+    // ---------------------------------------------------------------- palette
     static readonly Color Navy = Hex("#0B1630");
     static readonly Color Cyan = Hex("#3CC8FF");
     static readonly Color FieldEdge = Hex("#7DB7E8");
@@ -35,449 +35,829 @@ public static class IIADNeonRestyle
     static readonly Color White = Color.white;
     static readonly Color Muted = Hex("#A9BCD9");
 
-    // ------------------------------------------------------------------ sizes (canvas units, 1080 x 1920 reference, ~3 units = 1 dp)
-    const float HeaderH = 190f;
-    const float FooterH = 210f;
-    const float SidePad = 48f;
-    const float Gap = 32f;
-    const float ButtonH = 156f;     // 52 dp
-    const float IconBtn = 132f;     // 44 dp
-    const float FieldH = 132f;
-    const float TitleH = 120f;
-
+    // ---------------------------------------------------------------- sizes (1080 x 1920 reference, ~3 units = 1 dp)
+    const float HeaderH = 190f, FooterH = 210f, Side = 48f, Gap = 30f;
+    const float BtnH = 156f, IconBtn = 132f, FieldH = 132f, TitleH = 110f, MenuH = 176f;
     const string SpriteFolder = "Assets/Arts/NEW UI/IIAD Neon";
     const string ContentName = "IIAD_Content";
 
     static Sprite sBtnFill, sBtnOutline, sCard, sField, sCircle;
     static TMP_FontAsset font;
     static StringBuilder log;
+    static Dictionary<string, RectTransform> map;      // original paths of the screen being built
+    static RectTransform screenRoot;
+    static HashSet<Transform> used;
+    static HashSet<GameObject> referenced;              // objects your scripts point to
 
-    // ==================================================================
-    [MenuItem("Tools/IIAD/Restyle MainUI (Dark Neon)", priority = 40)]
+    enum K { Primary, Secondary, Danger, Menu, MenuDanger, Icon, IconDanger, Link, Eye, Stacked }
+    enum Tone { Title, Body, Muted, Accent, Error, Score }
+
+    // =================================================================== MENU
+    [MenuItem("Tools/IIAD/Build Neon UI (all screens)", priority = 40)]
     static void Run()
     {
         var container = FindInScene("ScreenContainer");
-        if (container == null)
+        if (container == null) { EditorUtility.DisplayDialog("Build Neon UI", "Open Assets/Scenes/UI/MainUI.unity first.", "OK"); return; }
+        if (container.GetComponentsInChildren<Transform>(true).Any(t => t.name == ContentName))
         {
-            EditorUtility.DisplayDialog("Restyle MainUI", "Open Assets/Scenes/UI/MainUI.unity first (no 'ScreenContainer' found).", "OK");
+            EditorUtility.DisplayDialog("Build Neon UI", "This scene was already restyled. Revert it first:\n\nFile > Open Scene without saving, or run 'git checkout Assets/Scenes/UI/MainUI.unity', then run this again.", "OK");
             return;
         }
-        if (!EditorUtility.DisplayDialog("Restyle MainUI (Dark Neon)",
-            "This rebuilds the layout and button design of every screen in ScreenContainer.\n\n" +
-            "It is one Undo step (Ctrl+Z). Commit to Git first so you can also roll back with 'git checkout'.",
-            "Restyle", "Cancel")) return;
+        if (!EditorUtility.DisplayDialog("Build Neon UI (all screens)",
+            "Rebuilds every screen, popup and list card to the IIAD Neon design.\n\nOne Undo step (Ctrl+Z). Commit to Git first.", "Build", "Cancel")) return;
 
         log = new StringBuilder();
         EnsureSprites();
         font = FindFont();
+        referenced = CollectReferenced(container.gameObject.scene);
 
         Undo.IncrementCurrentGroup();
         int group = Undo.GetCurrentGroup();
-        Undo.SetCurrentGroupName("IIAD Neon Restyle");
-        Undo.RegisterFullObjectHierarchyUndo(container.gameObject, "IIAD Neon Restyle");
+        Undo.SetCurrentGroupName("IIAD Neon UI");
+        Undo.RegisterFullObjectHierarchyUndo(container.gameObject, "IIAD Neon UI");
 
-        // 1. Layout: each screen gets Header / scroll Content / Footer
-        foreach (var screen in Screens(container))
-        {
-            try { RestructureScreen(screen); }
-            catch (System.Exception e) { log.AppendLine("! " + screen.name + ": " + e.Message); }
-        }
-
-        // 2. Visual style for everything (screens, popups, sample prompts)
-        StyleTree(container);
+        BuildAllScreens(container);
+        StylePopups(container.Find("PopUps"));
+        FinalStylePass(container);
 
         Undo.CollapseUndoOperations(group);
         EditorSceneManager.MarkSceneDirty(container.gameObject.scene);
+
+        StylePrefab("Assets/Data/Prefabs/ParticipantRankCard.prefab");
+        StylePrefab("Assets/Data/Prefabs/SubmittedCard.prefab");
+        IIADNeonLogo.ApplyToOpenScenes(true);
+
         Canvas.ForceUpdateCanvases();
-
-        Debug.Log("IIAD Neon restyle finished.\n" + log);
-        EditorUtility.DisplayDialog("Restyle finished",
-            "Done. Press Play and check each screen. Details are in the Console.\n\nCtrl+Z undoes everything. Save the scene to keep it.", "OK");
+        Debug.Log("IIAD Neon UI built.\n" + log);
+        EditorUtility.DisplayDialog("Neon UI built",
+            "Done. Press Play and go through the whole loop. The Console lists anything that needs a look.\n\nCtrl+Z undoes everything. Save the scene to keep it.", "OK");
     }
 
-    // ==================================================================
-    // SCREENS
-    // ==================================================================
+    // =================================================================== RECIPES
+    const string WS = "DesignWorkspace/MainSystemPanel/Background/";
 
-    static IEnumerable<RectTransform> Screens(Transform container)
+    static void BuildAllScreens(Transform c)
     {
-        foreach (Transform t in container)
-        {
-            if (t.name == "PopUps") continue;
-            if (t.name == "DesignWorkspace")
-            {
-                var bg = t.Find("MainSystemPanel/Background");
-                if (bg != null) foreach (Transform p in bg) if (p is RectTransform r) yield return r;
-                continue;
-            }
-            if (t is RectTransform rt) yield return rt;
-        }
+        // ---------- Splash: centre logo only
+        Screen(c, "SplashScreen", null, null, new N[] { Gapper(260), H("Logo", 560, 560), T("LoadingIndicator", 44, Tone.Muted, TextAlignmentOptions.Center, 80) }, null, header: false);
+
+        // ---------- Welcome
+        Screen(c, "WelcomeScreen", new string[0], new[] { "AccessibilityButton", "ExitAppButton" }, new N[] {
+            Gapper(40),
+            H("Logo", 440, 440),
+            T("WelcomeText", 52, Tone.Title, TextAlignmentOptions.Center, 80),
+            H("LogoTitle", 640, 210),
+            Gapper(40),
+            B("LogInButton", K.Primary),
+            B("CreateNewAccountButton", K.Secondary),
+        }, null);
+
+        // ---------- Login
+        Screen(c, "LoginScreen", new[] { "BackButton" }, new[] { "AccessibilityButton" }, new N[] {
+            H("Logo", 260, 260),
+            Card("LoginPanel",
+                T("LoginPanel/LoginText", 64, Tone.Title, TextAlignmentOptions.Center, 90),
+                T("LoginPanel/WelcomeText", 40, Tone.Muted, TextAlignmentOptions.Center, 56),
+                F("LoginPanel/Username"),
+                F("LoginPanel/Password"),
+                B("LoginPanel/ForgotPassword?", K.Link, 96),
+                T("LoginPanel/MessageText", 38, Tone.Error, TextAlignmentOptions.Center, 50),
+                B("LoginPanel/LoginButton", K.Primary),
+                T("LoginPanel/Or", 36, Tone.Muted, TextAlignmentOptions.Center, 50),
+                B("LoginPanel/CreateAccount", K.Secondary)),
+        }, null);
+
+        // ---------- Register
+        Screen(c, "RegisterScreen", new[] { "BackButton" }, new[] { "AccessibilityButton" }, new N[] {
+            H("Logo", 200, 200),
+            Card("RegisterPanel",
+                T("RegisterPanel/RegisterText", 64, Tone.Title, TextAlignmentOptions.Center, 90),
+                T("RegisterPanel/CreateText", 40, Tone.Muted, TextAlignmentOptions.Center, 56),
+                F("RegisterPanel/Email"),
+                F("RegisterPanel/Username"),
+                F("RegisterPanel/Password"),
+                F("RegisterPanel/ConfirmPassword"),
+                T("RegisterPanel/MessageText", 38, Tone.Error, TextAlignmentOptions.Center, 50),
+                B("RegisterPanel/CreateAccount", K.Primary)),
+        }, null);
+
+        // ---------- Main dashboard
+        Screen(c, "MainDashboard", new string[0], new[] { "Header/AccessibilityButton", "Header/SettingsButton", "Header/ProfileButton", "Header/LogOutButton" }, new N[] {
+            H("Logo/LogoImage", 300, 300),
+            Hide("Logo/LogoTitle"),
+            T("WelcomeSection/UsernameWelcomeText", 60, Tone.Title, TextAlignmentOptions.Center, 90),
+            Menu("GroupButtons",
+                B("GroupButtons/PracticeModeButton", K.Menu, MenuH),
+                B("GroupButtons/ChallengeModeButton", K.Menu, MenuH),
+                B("GroupButtons/SubmittedButton", K.Menu, MenuH),
+                B("GroupButtons/ExitButton", K.MenuDanger, MenuH)),
+        }, null);
+
+        // ---------- Challenge (join event)
+        Screen(c, "ChallengePanel", new[] { "BackButton" }, new string[0], new N[] {
+            Card("ChallengeBackground",
+                T("ChallengeBackground/ChallengeText", 64, Tone.Title, TextAlignmentOptions.Center, 90),
+                F("ChallengeBackground/SelectEvent"),
+                F("ChallengeBackground/EnterCode"),
+                T("ChallengeBackground/MessageText", 38, Tone.Error, TextAlignmentOptions.Center, 50),
+                B("ChallengeBackground/JoinEventButton", K.Primary)),
+        }, null);
+
+        // ---------- Participant details
+        Screen(c, "ParticipantDetailsPanel", new[] { "BackButton" }, new string[0], new N[] {
+            Card("ParticipantDetailsBg",
+                Title("ParticipantDetailsBg/TitleBackground"),
+                H("ParticipantDetailsBg/ProfileIcon", 140, 140),
+                F("ParticipantDetailsBg/NameBox"),
+                F("ParticipantDetailsBg/CategoryBox"),
+                F("ParticipantDetailsBg/SubCategoryBox"),
+                F("ParticipantDetailsBg/InstititionSchoolBox"),
+                T("ParticipantDetailsBg/MessageText", 38, Tone.Error, TextAlignmentOptions.Center, 50),
+                B("ParticipantDetailsBg/SaveParticipantButton", K.Primary)),
+        }, null);
+
+        // ---------- Settings
+        Screen(c, "SettingsPanel", new string[0], new string[0], new N[] {
+            Title("Background/SettingTitle"),
+            Menu("Background/GroupButton",
+                B("Background/GroupButton/HowToPlay", K.Menu, MenuH),
+                B("Background/GroupButton/AboutButton", K.Menu, MenuH),
+                B("Background/GroupButton/PrivacyButton", K.Menu, MenuH),
+                B("Background/GroupButton/DeleteAccount", K.MenuDanger, MenuH)),
+            Hide("Background"),
+        }, new[] { "FooterNavigation/BackButton" });
+
+        // ---------- How to play
+        Screen(c, "HowToPlayPanel", new string[0], new[] { "Header/HomeButton" }, new N[] {
+            Card("Background",
+                Title("Background/HowToPlayTitle"),
+                Pages(1080, "Background/Page 1", "Background/Page 2", "Background/Page 3", "Background/Page 4"),
+                T("Background/page", 40, Tone.Muted, TextAlignmentOptions.Center, 60)),
+        }, new[] { "FooterNavigation/PreviousButton", "FooterNavigation/NextButton" });
+
+        // ---------- Submitted designs
+        Screen(c, "SubmittedPanel", new string[0], new string[0], new N[] {
+            Title("bg/titlle"),
+            T("bg/StatusText", 38, Tone.Muted, TextAlignmentOptions.Center, 50),
+            H("bg/Scroll View", 900, 1150),
+            Row(BtnH, B("bg/BackButton", K.Secondary), B("bg/LeaderboardButton", K.Primary)),
+            Hide("bg"),
+        }, null, header: false);
+
+        // ---------- Leaderboard
+        Screen(c, "LeaderboardPanel", new string[0], new string[0], new N[] {
+            Title("TitleBackground"),
+            T("ChallengeTitle", 46, Tone.Accent, TextAlignmentOptions.Center, 66),
+            T("StatusText", 38, Tone.Muted, TextAlignmentOptions.Center, 50),
+            H("Panel Backgrounf", 1080, 1250, keepAspect: false),
+        }, new[] { "FooterNavigation/BackButton" }, header: false);
+
+        // ---------- Design workspace: shared header
+        string[] wsLeft = { "Header/GooleeLogo", "Header/AppsLogo" };
+        string[] wsRight = { "Header/AccessibilityButton", "Header/HomeButton" };
+        string[] wsFooter = { "FooterNavigation/PreviousButton", "FooterNavigation/NextButton" };
+
+        // Step 1: Idea
+        Screen(c, WS + "IdeaInputPanel", wsLeft, wsRight, new N[] {
+            Title("TitleBackground"),
+            Card("TipsBox",
+                Hide("TipsBox/Icon"),
+                T("TipsBox/TipsLabel", 44, Tone.Title, TextAlignmentOptions.MidlineLeft, 60),
+                T("TipsBox/Detail", 38, Tone.Muted, TextAlignmentOptions.TopLeft, 90)),
+            Box("IdeaInputArea",
+                T("IdeaInputArea/YourIdeaLabel", 40, Tone.Title, TextAlignmentOptions.MidlineLeft, 56),
+                In("IdeaInputArea/IdeaInput", 420),
+                B("IdeaInputArea/OpenSampleIdea(PracticeOnly)", K.Secondary, 120)),
+            Row(BtnH, B("MicButton", K.Secondary), B("RepeatButton", K.Secondary)),
+            T("MessageText", 38, Tone.Error, TextAlignmentOptions.Center, 50),
+            B("GeneratePosterButton", K.Primary, 170),
+        }, wsFooter);
+
+        // Step 2a: Output
+        Screen(c, WS + "OutputPanel", wsLeft, wsRight, new N[] {
+            Title("TitleBackground"),
+            Card("OutputArea",
+                H("OutputArea/OriginalPosterImage", 820, 1000),
+                B("OutputArea/FullScreenPoster", K.Secondary)),
+        }, wsFooter);
+
+        // Step 2b: Description
+        Screen(c, WS + "DescriptionPanel", wsLeft, wsRight, new N[] {
+            Title("TitleBackground"),
+            Card("OriginalPosterBox",
+                T("OriginalPosterBox/GeneratedPosterLabel", 40, Tone.Title, TextAlignmentOptions.MidlineLeft, 56),
+                H("OriginalPosterBox/LatesPosterDesc", 820, 640),
+                B("OriginalPosterBox/FullScreenPoster", K.Secondary)),
+            Card("DescriptionBox",
+                T("DescriptionBox/PosterDescriptionLabel", 40, Tone.Title, TextAlignmentOptions.MidlineLeft, 56),
+                R("DescriptionBox/Scroll View", 620)),
+            T("MessageText", 38, Tone.Error, TextAlignmentOptions.Center, 50),
+            B("ReplayDescriptionVoiceButton", K.Secondary),
+        }, wsFooter);
+
+        // Step 2c: Revision
+        Screen(c, WS + "RevisionPanel", wsLeft, wsRight, new N[] {
+            Title("TitleBackground"),
+            Card("Background/LatestPosterArea",
+                Title("Background/LatestPosterArea/Label", 44),
+                H("Background/LatestPosterArea/LatestPoster", 820, 640),
+                B("Background/LatestPosterArea/FullScreenPoster", K.Secondary)),
+            Card("Background/AttemptBox",
+                T("Background/AttemptBox/Label", 40, Tone.Title, TextAlignmentOptions.MidlineLeft, 56),
+                Box("Background/AttemptBox/AttempPanel",
+                    Hide("Background/AttemptBox/AttempPanel/Icon"),
+                    T("Background/AttemptBox/AttempPanel/AttemptRemainingText", 72, Tone.Score, TextAlignmentOptions.MidlineLeft, 96),
+                    T("Background/AttemptBox/AttempPanel/Details", 36, Tone.Muted, TextAlignmentOptions.MidlineLeft, 50))),
+            Card("Background/ReviseBox",
+                Title("Background/ReviseBox/LabelBg", 44),
+                In("Background/ReviseBox/ReviseInputField", 340),
+                Row(BtnH, B("Background/ReviseBox/MicButton", K.Secondary), B("Background/ReviseBox/RepeatButton", K.Secondary))),
+            B("ReviseDesignButton", K.Primary, 170),
+            Hide("Background"),
+        }, wsFooter);
+
+        // Step 3: Explain + submit
+        Screen(c, WS + "SubmissionPanel", wsLeft, wsRight, new N[] {
+            Title("TitleBackground"),
+            Card("Background/LatestPosterArea",
+                Title("Background/LatestPosterArea/Label", 44),
+                H("Background/LatestPosterArea/LatestPoster", 820, 560),
+                B("Background/LatestPosterArea/FullScreenPoster", K.Secondary)),
+            Card("Background/ExplainBox",
+                Title("Background/ExplainBox/LabelBg", 44),
+                In("Background/ExplainBox/SubmissionInput", 340),
+                Row(BtnH, B("Background/ExplainBox/MicButton", K.Secondary), B("Background/ExplainBox/RepeatButton", K.Secondary))),
+            Card("Background/TipsBox/Background",
+                T("Background/TipsBox/Background/Label", 44, Tone.Title, TextAlignmentOptions.MidlineLeft, 60),
+                T("Background/TipsBox/Background/Detail", 38, Tone.Muted, TextAlignmentOptions.TopLeft, 160),
+                Hide("Background/TipsBox/Background/\u2022"),
+                Hide("Background/TipsBox/Background/\u2022 (1)")),
+            T("MessageText", 38, Tone.Error, TextAlignmentOptions.Center, 50),
+            B("SubmitPosterButton", K.Primary, 170),
+            Hide("Background"),
+        }, wsFooter);
+
+        // Step 4a: Score
+        Screen(c, WS + "ScorePanel", wsLeft, wsRight, new N[] {
+            Title("TitleBackground"),
+            ScoreTop("TotalScorePanel"),
+            Card("ScorebreakdownPanel",
+                ScoreRow("ScorebreakdownPanel/PromptQualityRow"),
+                ScoreRow("ScorebreakdownPanel/PosterMessageRow"),
+                ScoreRow("ScorebreakdownPanel/DesignQualityRow"),
+                ScoreRow("ScorebreakdownPanel/AccessibilityRow"),
+                ScoreRow("ScorebreakdownPanel/FinalDesignRow")),
+        }, wsFooter);
+
+        // Step 4b: Feedback
+        Screen(c, WS + "FeedbackPanel", wsLeft, wsRight, new N[] {
+            Title("TitleBackground"),
+            FeedbackCard("FeedbackBox", "ReadFeedbackButton"),
+            FeedbackCard("ImprovementBox", "ReadImprovementButton"),
+        }, wsFooter);
+
+        // Full-screen posters
+        Screen(c, WS + "OriginalFullPosterPanel", null, null, new N[] { H("OriPosterImageFuul", 984, 1450), B("BackButton", K.Secondary) }, null, header: false);
+        Screen(c, WS + "LatestFullPosterPanel", null, null, new N[] { H("LatestPOsterFUUL", 984, 1450), B("BackButton", K.Secondary) }, null, header: false);
+
+        // Sample prompts (practice only)
+        Screen(c, "SamplePromptPopUp", null, null, new N[] {
+            Title("Title"),
+            Menu("Layout",
+                B("Layout/Sample 1 Button", K.Menu, 300),
+                B("Layout/Sample 2 Button", K.Menu, 300),
+                B("Layout/Sample 3 Button", K.Menu, 300),
+                B("Layout/Back", K.Secondary, BtnH)),
+        }, null, header: false);
     }
 
-    static void RestructureScreen(RectTransform screen)
+    // =================================================================== SCREEN BUILDER
+    static void Screen(Transform container, string path, string[] left, string[] right, N[] content, string[] footer, bool header = true)
     {
-        if (screen.Find(ContentName) != null) { log.AppendLine("= " + screen.name + " already restructured, restyle only"); return; }
+        var s = container.Find(path) as RectTransform;
+        if (s == null) { log.AppendLine("! screen not found: " + path); return; }
+        screenRoot = s;
+        used = new HashSet<Transform>();
+        map = new Dictionary<string, RectTransform>();
+        foreach (var t in s.GetComponentsInChildren<RectTransform>(true))
+            if (t != s) { string p = RelPath(s, t); if (!map.ContainsKey(p)) map[p] = t; }
 
-        // ---- header
-        RectTransform header = screen.Find("Header") as RectTransform;
-        var looseIcons = Children(screen).Where(c => IsHeaderButtonName(c.name) && c.GetComponent<Button>() != null).ToList();
-        if (header == null && looseIcons.Count > 0)
+        try
         {
-            header = NewRect("Header", screen);
-            header.SetSiblingIndex(0);
-        }
-        if (header != null)
-        {
-            foreach (var b in looseIcons) Undo.SetTransformParent(b, header, "IIAD");
-            LayoutHeader(header);
-        }
-
-        // ---- footer
-        var footer = screen.Find("FooterNavigation") as RectTransform;
-        if (footer != null) LayoutFooter(footer);
-
-        // ---- content
-        var items = Children(screen)
-            .Where(c => c != header && c != footer && !IsFullStretch(c))
-            .ToList();
-        if (items.Count == 0) return;
-
-        // Remember sizes and visual order before moving anything
-        var size = new Dictionary<RectTransform, Vector2>();
-        var center = new Dictionary<RectTransform, Vector2>();
-        foreach (var c in items) { size[c] = c.rect.size; center[c] = (Vector2)screen.InverseTransformPoint(WorldCenter(c)); }
-        items.Sort((a, b) =>
-        {
-            float dy = center[b].y - center[a].y;
-            if (Mathf.Abs(dy) > 40f) return dy > 0 ? 1 : -1;
-            return center[a].x.CompareTo(center[b].x);
-        });
-
-        var content = BuildScroll(screen, header != null ? HeaderH : 60f, footer != null ? FooterH : 0f);
-
-        // Group items that sat side by side into rows
-        int i = 0;
-        while (i < items.Count)
-        {
-            var row = new List<RectTransform> { items[i] };
-            int j = i + 1;
-            while (j < items.Count && Mathf.Abs(center[items[j]].y - center[items[i]].y) <= 40f
-                   && size[items[j]].x < 700f && size[items[i]].x < 700f) { row.Add(items[j]); j++; }
-
-            if (row.Count == 1)
+            // ---- header
+            RectTransform headerRT = null;
+            bool hasHeader = header && ((left != null && left.Length > 0) || (right != null && right.Length > 0) || s.Find("Header") != null);
+            if (hasHeader)
             {
-                MoveInto(row[0], content, size[row[0]]);
+                headerRT = s.Find("Header") as RectTransform ?? NewRect("Header", s);
+                used.Add(headerRT);
+                BuildHeader(headerRT, left ?? new string[0], right ?? new string[0]);
             }
-            else
+
+            // ---- footer
+            RectTransform footerRT = null;
+            if (footer != null)
             {
-                var r = NewRect("Row", content);
-                float w = row.Sum(x => size[x].x) + Gap * (row.Count - 1);
-                float h = row.Max(x => size[x].y);
-                r.sizeDelta = new Vector2(Mathf.Min(w, 1080f - SidePad * 2), h);
-                var hl = Undo.AddComponent<HorizontalLayoutGroup>(r.gameObject);
-                hl.spacing = Gap; hl.childAlignment = TextAnchor.MiddleCenter;
-                hl.childControlWidth = false; hl.childControlHeight = false;
-                hl.childForceExpandWidth = false; hl.childForceExpandHeight = false;
-                foreach (var x in row) MoveInto(x, r, size[x]);
+                footerRT = s.Find("FooterNavigation") as RectTransform;
+                if (footerRT != null) { used.Add(footerRT); BuildFooter(footerRT, footer); }
             }
-            i = j;
+
+            // ---- content
+            var column = BuildScroll(s, headerRT != null ? HeaderH : 70f, footerRT != null ? FooterH : 0f);
+            foreach (var n in content) n.Build(column);
+
+            // ---- leftovers directly under the screen
+            foreach (var child in Children(s))
+            {
+                if (child == headerRT || child == footerRT || child.name == ContentName || used.Contains(child)) continue;
+                Leftover(child);
+            }
+            log.AppendLine("+ " + path);
         }
-
-        // Forms: label above a large field
-        foreach (Transform c in content.GetComponentsInChildren<Transform>(true))
-            if (IsFormCard(c.name) && c is RectTransform card) RestructureForm(card);
-
-        log.AppendLine("+ " + screen.name + ": " + items.Count + " items in a column" + (header ? ", header" : "") + (footer ? ", footer" : ""));
+        catch (System.Exception e) { log.AppendLine("! " + path + ": " + e.Message); Debug.LogException(e); }
     }
 
     static RectTransform BuildScroll(RectTransform screen, float top, float bottom)
     {
         var scroll = NewRect(ContentName, screen);
-        int idx = 0;
-        if (screen.Find("Header") != null) idx = screen.Find("Header").GetSiblingIndex() + 1;
-        scroll.SetSiblingIndex(idx);
-        scroll.anchorMin = Vector2.zero; scroll.anchorMax = Vector2.one;
-        scroll.offsetMin = new Vector2(0, bottom); scroll.offsetMax = new Vector2(0, -top);
+        var hdr = screen.Find("Header");
+        scroll.SetSiblingIndex(hdr != null ? hdr.GetSiblingIndex() + 1 : 0);
+        Stretch(scroll); scroll.offsetMin = new Vector2(0, bottom); scroll.offsetMax = new Vector2(0, -top);
+        var hit = Undo.AddComponent<Image>(scroll.gameObject); hit.color = new Color(0, 0, 0, 0);
 
-        var hit = Undo.AddComponent<Image>(scroll.gameObject);    // lets you drag anywhere to scroll
-        hit.color = new Color(0, 0, 0, 0);
-
-        var viewport = NewRect("Viewport", scroll);
-        viewport.anchorMin = Vector2.zero; viewport.anchorMax = Vector2.one;
-        viewport.offsetMin = viewport.offsetMax = Vector2.zero;
+        var viewport = NewRect("Viewport", scroll); Stretch(viewport);
         Undo.AddComponent<RectMask2D>(viewport.gameObject);
 
         var content = NewRect("Content", viewport);
         content.anchorMin = new Vector2(0, 1); content.anchorMax = new Vector2(1, 1);
-        content.pivot = new Vector2(0.5f, 1);
-        content.anchoredPosition = Vector2.zero; content.sizeDelta = Vector2.zero;
+        content.pivot = new Vector2(0.5f, 1); content.anchoredPosition = Vector2.zero; content.sizeDelta = Vector2.zero;
         var vl = Undo.AddComponent<VerticalLayoutGroup>(content.gameObject);
-        vl.padding = new RectOffset((int)SidePad, (int)SidePad, 24, 64);
-        vl.spacing = Gap; vl.childAlignment = TextAnchor.UpperCenter;
-        vl.childControlWidth = false; vl.childControlHeight = false;
-        vl.childForceExpandWidth = false; vl.childForceExpandHeight = false;
+        vl.padding = new RectOffset((int)Side, (int)Side, 16, 72);
+        Column(vl, Gap);
         var fit = Undo.AddComponent<ContentSizeFitter>(content.gameObject);
         fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         var sr = Undo.AddComponent<ScrollRect>(scroll.gameObject);
-        sr.viewport = viewport; sr.content = content;
-        sr.horizontal = false; sr.vertical = true;
-        sr.movementType = ScrollRect.MovementType.Clamped;
-        sr.scrollSensitivity = 40f;
+        sr.viewport = viewport; sr.content = content; sr.horizontal = false; sr.vertical = true;
+        sr.movementType = ScrollRect.MovementType.Clamped; sr.scrollSensitivity = 40f;
         return content;
     }
 
-    static void MoveInto(RectTransform item, RectTransform parent, Vector2 size)
+    static void BuildHeader(RectTransform h, string[] left, string[] right)
     {
-        Undo.SetTransformParent(item, parent, "IIAD");
-        item.anchorMin = item.anchorMax = new Vector2(0.5f, 1f);
-        item.pivot = new Vector2(0.5f, 0.5f);
-        item.localScale = Vector3.one;
-        item.localRotation = Quaternion.identity;
-        item.sizeDelta = new Vector2(Mathf.Min(size.x, 1080f - SidePad), size.y);
-    }
+        h.anchorMin = new Vector2(0, 1); h.anchorMax = new Vector2(1, 1); h.pivot = new Vector2(0.5f, 1);
+        h.anchoredPosition = Vector2.zero; h.sizeDelta = new Vector2(0, HeaderH);
+        foreach (var lg in h.GetComponents<LayoutGroup>()) Undo.DestroyObjectImmediate(lg);
+        var hl = Undo.AddComponent<HorizontalLayoutGroup>(h.gameObject);
+        hl.padding = new RectOffset(36, 36, 44, 14); hl.spacing = 22; hl.childAlignment = TextAnchor.MiddleLeft;
+        hl.childControlWidth = true; hl.childControlHeight = true; hl.childForceExpandWidth = false; hl.childForceExpandHeight = false;
 
-    // ------------------------------------------------------------------ header
-    static void LayoutHeader(RectTransform header)
-    {
-        header.anchorMin = new Vector2(0, 1); header.anchorMax = new Vector2(1, 1);
-        header.pivot = new Vector2(0.5f, 1);
-        header.anchoredPosition = Vector2.zero;
-        header.sizeDelta = new Vector2(0, HeaderH);
+        var order = new List<RectTransform>();
+        foreach (var p in left) { var t = Get(p); if (t != null) order.Add(t); }
+        var spacer = NewRect("Spacer", h); Pref(spacer, 0, 1, flexW: 1);
+        order.Add(spacer);
+        foreach (var p in right) { var t = Get(p); if (t != null) order.Add(t); }
 
-        var old = header.GetComponent<LayoutGroup>();
-        if (old != null) Undo.DestroyObjectImmediate(old);
-        var hl = Undo.AddComponent<HorizontalLayoutGroup>(header.gameObject);
-        hl.padding = new RectOffset(36, 36, 40, 18);
-        hl.spacing = 24; hl.childAlignment = TextAnchor.MiddleLeft;
-        hl.childControlWidth = true; hl.childControlHeight = false;
-        hl.childForceExpandWidth = false; hl.childForceExpandHeight = false;
-
-        RectTransform spacer = header.Find("Spacer") as RectTransform;
-        if (spacer == null) { spacer = NewRect("Spacer", header); }
-        var sle = GetOrAdd<LayoutElement>(spacer.gameObject);
-        sle.flexibleWidth = 1; sle.minWidth = 0;
-
-        foreach (var c in Children(header))
+        foreach (var t in order)
         {
-            if (c == spacer) continue;
-            string n = c.name.ToLowerInvariant();
-            Vector2 s;
-            if (n.Contains("appslogo")) s = FitHeight(c, 112f);
-            else if (n.Contains("logo")) s = FitHeight(c, 96f);
-            else if (c.GetComponent<Button>() != null) s = new Vector2(IconBtn, IconBtn);
-            else s = c.rect.size;
-            c.sizeDelta = s;
-            var le = GetOrAdd<LayoutElement>(c.gameObject);
-            le.minWidth = le.preferredWidth = s.x; le.flexibleWidth = 0;
-            var img = c.GetComponent<Image>(); if (img != null && n.Contains("logo")) img.preserveAspect = true;
-        }
-
-        // Order: back, logos, spacer, then actions on the right
-        var ordered = Children(header).OrderBy(HeaderOrder).ToList();
-        for (int k = 0; k < ordered.Count; k++) ordered[k].SetSiblingIndex(k);
-    }
-
-    static int HeaderOrder(RectTransform t)
-    {
-        string n = t.name.ToLowerInvariant();
-        if (n.Contains("back")) return 0;
-        if (n.Contains("gooleelogo")) return 1;
-        if (n.Contains("logo")) return 2;
-        if (n == "spacer") return 3;
-        if (n.Contains("accessib")) return 4;
-        if (n.Contains("setting")) return 5;
-        if (n.Contains("profile")) return 6;
-        if (n.Contains("home")) return 7;
-        if (n.Contains("logout")) return 8;
-        if (n.Contains("exit")) return 9;
-        return 3;
-    }
-
-    static bool IsHeaderButtonName(string name)
-    {
-        string n = name.ToLowerInvariant();
-        return n == "backbutton" || n.Contains("accessibilitybutton") || n.Contains("homebutton") || n.Contains("exitappbutton")
-            || n.Contains("settingsbutton") || n.Contains("logoutbutton") || n.Contains("profilebutton");
-    }
-
-    // ------------------------------------------------------------------ footer
-    static void LayoutFooter(RectTransform footer)
-    {
-        footer.anchorMin = new Vector2(0, 0); footer.anchorMax = new Vector2(1, 0);
-        footer.pivot = new Vector2(0.5f, 0);
-        footer.anchoredPosition = Vector2.zero;
-        footer.sizeDelta = new Vector2(0, FooterH);
-        var old = footer.GetComponent<LayoutGroup>();
-        if (old != null) Undo.DestroyObjectImmediate(old);
-        var hl = Undo.AddComponent<HorizontalLayoutGroup>(footer.gameObject);
-        hl.padding = new RectOffset((int)SidePad, (int)SidePad, 27, 27);
-        hl.spacing = Gap; hl.childAlignment = TextAnchor.MiddleCenter;
-        hl.childControlWidth = true; hl.childControlHeight = true;
-        hl.childForceExpandWidth = true; hl.childForceExpandHeight = true;
-        // Previous on the left, Next on the right
-        var prev = footer.Find("PreviousButton"); if (prev != null) prev.SetAsFirstSibling();
-        var next = footer.Find("NextButton"); if (next != null) next.SetAsLastSibling();
-    }
-
-    // ------------------------------------------------------------------ forms
-    static bool IsFormCard(string n) => n == "LoginPanel" || n == "RegisterPanel" || n == "ChallengeBackground" || n == "ParticipantDetailsBg";
-
-    static void RestructureForm(RectTransform card)
-    {
-        if (card.GetComponent<VerticalLayoutGroup>() != null) return;
-
-        var kids = Children(card).ToList();
-        var y = kids.ToDictionary(k => k, k => card.InverseTransformPoint(WorldCenter(k)).y);
-        kids.Sort((a, b) => y[b].CompareTo(y[a]));
-        for (int k = 0; k < kids.Count; k++) kids[k].SetSiblingIndex(k);
-
-        var vl = Undo.AddComponent<VerticalLayoutGroup>(card.gameObject);
-        vl.padding = new RectOffset(64, 64, 56, 64);
-        vl.spacing = 28; vl.childAlignment = TextAnchor.UpperCenter;
-        vl.childControlWidth = true; vl.childControlHeight = false;
-        vl.childForceExpandWidth = true; vl.childForceExpandHeight = false;
-        var fit = Undo.AddComponent<ContentSizeFitter>(card.gameObject);
-        fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        foreach (var k in kids)
-        {
-            var field = (Component)k.GetComponentInChildren<TMP_InputField>(true) ?? k.GetComponentInChildren<TMP_Dropdown>(true);
-            bool isGroup = field != null && field.transform != k;
-            if (isGroup) RestructureFieldGroup(k, field);
-            else if (k.GetComponent<TMP_InputField>() != null || k.GetComponent<TMP_Dropdown>() != null) k.sizeDelta = new Vector2(k.sizeDelta.x, FieldH);
-            else if (k.GetComponent<Button>() != null) k.sizeDelta = new Vector2(k.sizeDelta.x, k.GetComponent<Image>() == null ? 96f : ButtonH);
-            else if (k.GetComponent<Image>() != null && k.GetComponentInChildren<TMP_Text>() == null) { var img = k.GetComponent<Image>(); img.preserveAspect = true; }
-            else if (k.GetComponent<TMP_Text>() is TMP_Text t && string.IsNullOrWhiteSpace(t.text) && k.name.ToLower().Contains("message")) k.sizeDelta = new Vector2(k.sizeDelta.x, 64);
-        }
-        log.AppendLine("  form " + card.name + ": label-above-field column");
-    }
-
-    static void RestructureFieldGroup(RectTransform group, Component field)
-    {
-        var fieldRT = (RectTransform)field.transform;
-
-        // Decorative icons inside field groups are hidden (they are not tappable and crowd the column)
-        foreach (var c in Children(group))
-            if (c != fieldRT && c.GetComponent<TMP_Text>() == null && c.GetComponent<Button>() == null && c.GetComponentInChildren<Selectable>(true) == null)
-            { Undo.RecordObject(c.gameObject, "IIAD"); c.gameObject.SetActive(false); log.AppendLine("  hid decoration " + group.name + "/" + c.name); }
-
-        // Eye button goes inside the password field, on the right
-        foreach (var c in Children(group).ToList())
-        {
-            if (!c.name.ToLower().Contains("eye")) continue;
-            Undo.SetTransformParent(c, fieldRT, "IIAD");
-            c.anchorMin = c.anchorMax = new Vector2(1, 0.5f); c.pivot = new Vector2(1, 0.5f);
-            c.anchoredPosition = new Vector2(-16, 0); c.sizeDelta = new Vector2(100, 100);
-            var img = c.GetComponent<Image>(); if (img != null) img.preserveAspect = true;
-            if (field is TMP_InputField inf && inf.textViewport != null)
-            { Undo.RecordObject(inf.textViewport, "IIAD"); inf.textViewport.offsetMax = new Vector2(-124, inf.textViewport.offsetMax.y); }
-        }
-
-        var label = group.GetComponentsInChildren<TMP_Text>(true).FirstOrDefault(t => t.GetComponentInParent<TMP_InputField>() == null && t.GetComponentInParent<TMP_Dropdown>() == null);
-        if (label != null)
-        {
-            label.transform.SetAsFirstSibling();
-            ((RectTransform)label.transform).sizeDelta = new Vector2(0, 56);
-            label.alignment = TextAlignmentOptions.MidlineLeft;
-            label.text = label.text.Replace(":", "").Trim();
-        }
-        fieldRT.SetSiblingIndex(label != null ? 1 : 0);
-        fieldRT.sizeDelta = new Vector2(fieldRT.sizeDelta.x, FieldH);
-
-        var vl = Undo.AddComponent<VerticalLayoutGroup>(group.gameObject);
-        vl.spacing = 12; vl.childAlignment = TextAnchor.UpperLeft;
-        vl.childControlWidth = true; vl.childControlHeight = false;
-        vl.childForceExpandWidth = true; vl.childForceExpandHeight = false;
-        group.sizeDelta = new Vector2(group.sizeDelta.x, (label != null ? 56 + 12 : 0) + FieldH);
-    }
-
-    // ==================================================================
-    // STYLE
-    // ==================================================================
-
-    static void StyleTree(Transform root)
-    {
-        int buttons = 0, cards = 0, fields = 0, titles = 0;
-
-        foreach (var b in root.GetComponentsInChildren<Button>(true)) { StyleButton(b); buttons++; }
-        foreach (var f in root.GetComponentsInChildren<TMP_InputField>(true)) { StyleField(f.GetComponent<Image>(), f.textComponent, f.placeholder as TMP_Text); f.caretColor = Cyan; f.customCaretColor = true; f.selectionColor = new Color(Cyan.r, Cyan.g, Cyan.b, 0.35f); fields++; }
-        foreach (var d in root.GetComponentsInChildren<TMP_Dropdown>(true)) { StyleDropdown(d); fields++; }
-
-        foreach (var img in root.GetComponentsInChildren<Image>(true))
-        {
-            if (img.GetComponent<Selectable>() != null || img.GetComponentInParent<Button>(true) != null) continue;
-            if (img.GetComponentInParent<TMP_InputField>(true) != null || img.GetComponentInParent<TMP_Dropdown>(true) != null) continue;
-            if (img.GetComponent<Scrollbar>() != null || img.GetComponentInParent<Scrollbar>(true) != null) continue;
-            string n = img.name.ToLowerInvariant();
-            if (img.sprite == null || n.Contains("logo") || n.Contains("icon") || n.Contains("poster") || n.Contains("circle") || n.Contains("handle") || n == "viewport" || n == "image") continue;
-            if (IsFullStretch((RectTransform)img.transform) && img.transform.childCount > 0 && img.transform.parent != null && img.transform.parent.name != "PopUps" && !n.Contains("box")) continue; // background art
-
-            if (IsTitle(img))
+            if (t == spacer) continue;
+            Undo.SetTransformParent(t, h, "IIAD"); used.Add(t);
+            string n = t.name.ToLowerInvariant();
+            var btn = t.GetComponent<Button>();
+            if (btn != null)
             {
-                Undo.RecordObject(img, "IIAD"); img.enabled = false;
-                var rt = (RectTransform)img.transform;
-                rt.sizeDelta = new Vector2(Mathf.Max(rt.sizeDelta.x, 800f), TitleH);
-                var le = img.GetComponent<LayoutElement>(); if (le != null) le.preferredHeight = TitleH;
-                foreach (var t in img.GetComponentsInChildren<TMP_Text>(true))
-                {
-                    StyleText(t, 64, White, FontStyles.Bold);
-                    t.alignment = TextAlignmentOptions.Center;
-                    var trt = (RectTransform)t.transform;
-                    trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = trt.offsetMax = Vector2.zero;
-                }
-                titles++;
-                continue;
+                bool danger = n.Contains("logout") || n.Contains("exit");
+                StyleButton(btn, danger ? K.IconDanger : K.Icon);
+                Pref(t, IconBtn, IconBtn);
             }
-            if (img.transform.childCount == 0) continue;     // single decorative image
-            Undo.RecordObject(img, "IIAD");
-            img.sprite = sCard; img.type = Image.Type.Sliced; img.pixelsPerUnitMultiplier = 1f;
-            img.color = new Color(Cyan.r, Cyan.g, Cyan.b, 1f);
-            cards++;
+            else
+            {
+                var img = t.GetComponent<Image>(); if (img != null) img.preserveAspect = true;
+                float hh = n.Contains("appslogo") ? 108 : 92;
+                var sz = t.rect.size; float w = sz.y > 0 ? sz.x * hh / sz.y : hh;
+                Pref(t, w, hh);
+            }
         }
+        for (int i = 0; i < order.Count; i++) order[i].SetSiblingIndex(i);
+        // anything else that lived in the header stays but is hidden from layout
+        foreach (var c in Children(h)) if (!order.Contains(c)) Leftover(c);
+    }
 
-        // Plain texts: readable font, light colour on the dark background, never tiny
-        foreach (var t in root.GetComponentsInChildren<TMP_Text>(true))
+    static void BuildFooter(RectTransform f, string[] buttons)
+    {
+        f.anchorMin = new Vector2(0, 0); f.anchorMax = new Vector2(1, 0); f.pivot = new Vector2(0.5f, 0);
+        f.anchoredPosition = Vector2.zero; f.sizeDelta = new Vector2(0, FooterH);
+        foreach (var lg in f.GetComponents<LayoutGroup>()) Undo.DestroyObjectImmediate(lg);
+        var hl = Undo.AddComponent<HorizontalLayoutGroup>(f.gameObject);
+        hl.padding = new RectOffset((int)Side, (int)Side, 27, 27); hl.spacing = Gap; hl.childAlignment = TextAnchor.MiddleCenter;
+        hl.childControlWidth = true; hl.childControlHeight = true; hl.childForceExpandWidth = true; hl.childForceExpandHeight = true;
+        int i = 0;
+        foreach (var p in buttons)
         {
-            if (t.GetComponentInParent<Button>(true) != null || t.GetComponentInParent<TMP_InputField>(true) != null || t.GetComponentInParent<TMP_Dropdown>(true) != null) continue;
-            Undo.RecordObject(t, "IIAD");
-            if (font != null) t.font = font;
-            Color.RGBToHSV(t.color, out _, out _, out float v);
-            if (v < 0.45f) t.color = White;
-            if (!t.enableAutoSizing && t.fontSize < 34) t.fontSize = 34;
+            var t = Get(p); if (t == null) continue;
+            used.Add(t); t.SetSiblingIndex(i++);
+            var b = t.GetComponent<Button>();
+            if (b != null) StyleButton(b, t.name.ToLowerInvariant().Contains("next") ? K.Primary : K.Secondary);
+            Pref(t, 0, BtnH, flexW: 1);
         }
-
-        log.AppendLine($"Styled {buttons} buttons, {fields} fields, {cards} cards, {titles} titles.");
     }
 
-    enum Kind { Primary, Secondary, Danger, Icon, Link, Eye, Menu }
+    // =================================================================== NODES
+    abstract class N { public abstract void Build(RectTransform parent); }
 
-    static Kind Classify(Button b)
+    static RectTransform Get(string path)
     {
-        string n = b.name.ToLowerInvariant();
-        string parent = b.transform.parent != null ? b.transform.parent.name.ToLowerInvariant() : "";
-        var img = b.GetComponent<Image>();
-        bool hasText = b.GetComponentsInChildren<TMP_Text>(true).Any(t => !string.IsNullOrWhiteSpace(t.text) && t.GetComponentInParent<TMP_InputField>(true) == null);
-
-        if (n.Contains("eye")) return Kind.Eye;
-        if (img == null && hasText) return Kind.Link;
-        if (!hasText) return Kind.Icon;
-        if (n.Contains("delete") || n == "exitbutton") return Kind.Danger;
-        if (parent.Contains("groupbutton") || parent == "layout") return Kind.Menu;     // dashboard, settings, sample prompts
-        if (n.Contains("login") || n.Contains("generate") || n.Contains("revisedesign") || n.Contains("submitposter") ||
-            n.Contains("joinevent") || n.Contains("saveparticipant") || n == "nextbutton" || n == "yesbutton" ||
-            (n == "createaccount" && parent.Contains("register"))) return Kind.Primary;
-        return Kind.Secondary;
+        if (map.TryGetValue(path, out var t) && t != null) return t;
+        log.AppendLine("  ? " + screenRoot.name + ": '" + path + "' not found (skipped)");
+        return null;
     }
 
-    static void StyleButton(Button b)
+    static RectTransform Place(string path, RectTransform parent)
     {
-        var kind = Classify(b);
+        var t = Get(path); if (t == null) return null;
+        used.Add(t);
+        if (t.parent != parent) Undo.SetTransformParent(t, parent, "IIAD");
+        t.SetAsLastSibling();
+        t.localScale = Vector3.one; t.localRotation = Quaternion.identity;
+        return t;
+    }
+
+    // ---- text
+    class TN : N
+    {
+        public string p; public float size, h; public Tone tone; public TextAlignmentOptions align;
+        public override void Build(RectTransform parent)
+        {
+            var t = Place(p, parent); if (t == null) return;
+            var tmp = t.GetComponent<TMP_Text>();
+            if (tmp != null)
+            {
+                StyleText(tmp, size, ToneColor(tone), tone == Tone.Title || tone == Tone.Score || tone == Tone.Accent ? FontStyles.Bold : FontStyles.Normal);
+                tmp.alignment = align; tmp.enableAutoSizing = false; tmp.overflowMode = TextOverflowModes.Overflow;
+            }
+            Pref(t, 0, h, flexW: 1, minOnly: true);
+        }
+    }
+    static N T(string p, float size, Tone tone, TextAlignmentOptions align, float h) => new TN { p = p, size = size, tone = tone, align = align, h = h };
+
+    // ---- title (image badge with text inside, or plain text)
+    class TitleN : N
+    {
+        public string p; public float size;
+        public override void Build(RectTransform parent)
+        {
+            var t = Place(p, parent); if (t == null) return;
+            var img = t.GetComponent<Image>(); if (img != null) { Undo.RecordObject(img, "IIAD"); img.enabled = false; }
+            foreach (var tmp in t.GetComponentsInChildren<TMP_Text>(true))
+            {
+                StyleText(tmp, size, White, FontStyles.Bold);
+                tmp.alignment = size >= 60 ? TextAlignmentOptions.Center : TextAlignmentOptions.MidlineLeft;
+                tmp.enableAutoSizing = true; tmp.fontSizeMax = size; tmp.fontSizeMin = 36;
+                if (tmp.transform != t) { var r = (RectTransform)tmp.transform; Stretch(r); }
+            }
+            Pref(t, 0, size >= 60 ? TitleH : 64, flexW: 1);
+        }
+    }
+    static N Title(string p, float size = 64) => new TitleN { p = p, size = size };
+
+    // ---- button
+    class BN : N
+    {
+        public string p; public K k; public float h;
+        public override void Build(RectTransform parent)
+        {
+            var t = Place(p, parent); if (t == null) return;
+            var b = t.GetComponent<Button>(); if (b != null) StyleButton(b, k);
+            Pref(t, 0, h, flexW: 1);
+        }
+    }
+    static BN B(string p, K k, float h = BtnH) => new BN { p = p, k = k, h = h };
+
+    // ---- field group (label + input/dropdown)
+    class FN : N
+    {
+        public string p;
+        public override void Build(RectTransform parent)
+        {
+            var g = Place(p, parent); if (g == null) return;
+            Component field = g.GetComponentInChildren<TMP_InputField>(true);
+            if (field == null) field = g.GetComponentInChildren<TMP_Dropdown>(true);
+            if (field == null) { Pref(g, 0, FieldH, flexW: 1); return; }
+            var fRT = (RectTransform)field.transform;
+
+            var label = g.GetComponentsInChildren<TMP_Text>(true).FirstOrDefault(x => x.GetComponentInParent<TMP_InputField>(true) == null && x.GetComponentInParent<TMP_Dropdown>(true) == null);
+            foreach (var c in Children(g).ToList())
+            {
+                if (c == fRT || (label != null && c == label.transform)) continue;
+                if (c.name.ToLowerInvariant().Contains("eye"))
+                {   // eye button sits inside the password box, right side
+                    Undo.SetTransformParent(c, fRT, "IIAD");
+                    c.anchorMin = c.anchorMax = new Vector2(1, 0.5f); c.pivot = new Vector2(1, 0.5f);
+                    c.anchoredPosition = new Vector2(-14, 0); c.sizeDelta = new Vector2(104, 104);
+                    var le = c.GetComponent<LayoutElement>() ?? Undo.AddComponent<LayoutElement>(c.gameObject); le.ignoreLayout = true;
+                    var img = c.GetComponent<Image>(); if (img != null) img.preserveAspect = true;
+                    if (field is TMP_InputField inf && inf.textViewport != null) { Undo.RecordObject(inf.textViewport, "IIAD"); inf.textViewport.offsetMax = new Vector2(-126, inf.textViewport.offsetMax.y); }
+                    continue;
+                }
+                Leftover(c);
+            }
+            if (label != null)
+            {
+                label.transform.SetAsFirstSibling();
+                StyleText(label, 40, White, FontStyles.Bold); label.alignment = TextAlignmentOptions.MidlineLeft;
+                label.text = label.text.Replace(":", "").Trim();
+                Pref((RectTransform)label.transform, 0, 56, flexW: 1);
+            }
+            fRT.SetSiblingIndex(label != null ? 1 : 0);
+            Pref(fRT, 0, FieldH, flexW: 1);
+            foreach (var lg in g.GetComponents<LayoutGroup>()) Undo.DestroyObjectImmediate(lg);
+            var vl = Undo.AddComponent<VerticalLayoutGroup>(g.gameObject); Column(vl, 12);
+            var gi = g.GetComponent<Image>(); if (gi != null) { Undo.RecordObject(gi, "IIAD"); gi.enabled = false; }
+            Pref(g, 0, -1, flexW: 1);
+        }
+    }
+    static N F(string p) => new FN { p = p };
+
+    // ---- big text input
+    class InN : N
+    {
+        public string p; public float h;
+        public override void Build(RectTransform parent) { var t = Place(p, parent); if (t != null) Pref(t, 0, h, flexW: 1); }
+    }
+    static N In(string p, float h) => new InN { p = p, h = h };
+
+    // ---- raw element at full width (scroll views)
+    static N R(string p, float h) => new InN { p = p, h = h };
+
+    // ---- holder: element kept at its own aspect, centred, inside a full-width slot
+    class HN : N
+    {
+        public string p; public float w, h; public bool keepAspect = true;
+        public override void Build(RectTransform parent)
+        {
+            var src = Get(p); if (src == null) return;
+            var size = src.rect.size;                       // measure before moving
+            var holder = NewRect("IIAD_Holder_" + src.name, parent);
+            Pref(holder, 0, h, flexW: 1);
+            var t = Place(p, holder);
+            Vector2 fit = new Vector2(w, h);
+            if (keepAspect && size.x > 1 && size.y > 1)
+            {
+                float k = Mathf.Min(w / size.x, h / size.y);
+                fit = size * k;
+            }
+            t.anchorMin = t.anchorMax = t.pivot = new Vector2(0.5f, 0.5f);
+            t.anchoredPosition = Vector2.zero; t.sizeDelta = fit;
+            var le = t.GetComponent<LayoutElement>(); if (le != null) le.ignoreLayout = true;
+            var img = t.GetComponent<Image>(); if (img != null) img.preserveAspect = true;
+        }
+    }
+    static N H(string p, float w, float h, bool keepAspect = true) => new HN { p = p, w = w, h = h, keepAspect = keepAspect };
+
+    // ---- card: existing object becomes a dark rounded card with a cyan edge, children in a column
+    class CardN : N
+    {
+        public string p; public N[] kids; public bool transparent;
+        public override void Build(RectTransform parent)
+        {
+            var t = Place(p, parent); if (t == null) return;
+            var img = t.GetComponent<Image>();
+            if (transparent) { if (img != null) { Undo.RecordObject(img, "IIAD"); img.enabled = false; } }
+            else
+            {
+                if (img == null) img = Undo.AddComponent<Image>(t.gameObject);
+                Undo.RecordObject(img, "IIAD");
+                img.enabled = true; img.sprite = sCard; img.type = Image.Type.Sliced; img.pixelsPerUnitMultiplier = 1f; img.color = Cyan; img.preserveAspect = false;
+            }
+            foreach (var lg in t.GetComponents<LayoutGroup>()) Undo.DestroyObjectImmediate(lg);
+            foreach (var cf in t.GetComponents<ContentSizeFitter>()) Undo.DestroyObjectImmediate(cf);
+            var vl = Undo.AddComponent<VerticalLayoutGroup>(t.gameObject);
+            vl.padding = transparent ? new RectOffset(0, 0, 0, 0) : new RectOffset(44, 44, 40, 44);
+            Column(vl, 24);
+            foreach (var k in kids) k.Build(t);
+            foreach (var c in Children(t)) if (!used.Contains(c) && !c.name.StartsWith("IIAD_")) Leftover(c);
+            Pref(t, 0, -1, flexW: 1);
+        }
+    }
+    static N Card(string p, params N[] kids) => new CardN { p = p, kids = kids };
+    static N Box(string p, params N[] kids) => new CardN { p = p, kids = kids, transparent = true };
+    static N Menu(string p, params N[] kids) => new CardN { p = p, kids = kids, transparent = true };
+
+    // ---- row of items side by side
+    class RowN : N
+    {
+        public float h; public N[] kids;
+        public override void Build(RectTransform parent)
+        {
+            var r = NewRect("IIAD_Row", parent);
+            var hl = Undo.AddComponent<HorizontalLayoutGroup>(r.gameObject);
+            hl.spacing = Gap; hl.childAlignment = TextAnchor.MiddleCenter;
+            hl.childControlWidth = true; hl.childControlHeight = true; hl.childForceExpandWidth = true; hl.childForceExpandHeight = true;
+            foreach (var k in kids) k.Build(r);
+            Pref(r, 0, h, flexW: 1);
+        }
+    }
+    static N Row(float h, params N[] kids) => new RowN { h = h, kids = kids };
+
+    // ---- empty space
+    class GapN : N { public float h; public override void Build(RectTransform parent) { var g = NewRect("IIAD_Gap", parent); Pref(g, 0, h, flexW: 1); } }
+    static N Gapper(float h) => new GapN { h = h };
+
+    // ---- hide decoration
+    class HideN : N
+    {
+        public string p;
+        public override void Build(RectTransform parent)
+        {
+            if (!map.TryGetValue(p, out var t) || t == null) return;
+            used.Add(t);
+            // never hide something a script uses or anything containing controls / text that is still needed
+            if (t.GetComponentsInChildren<Selectable>(true).Any(s => !used.Contains(s.transform)) && !t.GetComponentsInChildren<Selectable>(true).All(s => used.Contains(s.transform)))
+            { Leftover(t); return; }
+            if (referenced.Contains(t.gameObject) && t.GetComponentsInChildren<Transform>(true).Count() == 1) { Leftover(t); return; }
+            Undo.RecordObject(t.gameObject, "IIAD");
+            if (t.GetComponentsInChildren<Transform>(true).Any(x => x != t && used.Contains(x)))
+            {   // container emptied by the recipe: just hide its own artwork
+                var img = t.GetComponent<Image>(); if (img != null) { Undo.RecordObject(img, "IIAD"); img.enabled = false; }
+                var le = t.GetComponent<LayoutElement>() ?? Undo.AddComponent<LayoutElement>(t.gameObject); le.ignoreLayout = true;
+                return;
+            }
+            t.gameObject.SetActive(false);
+        }
+    }
+    static N Hide(string p) => new HideN { p = p };
+
+    // ---- How-to-play pages stacked in one slot (the manager switches them)
+    class PagesN : N
+    {
+        public float h; public string[] pages;
+        public override void Build(RectTransform parent)
+        {
+            var slot = NewRect("IIAD_Pages", parent); Pref(slot, 0, h, flexW: 1);
+            foreach (var p in pages)
+            {
+                var t = Place(p, slot); if (t == null) continue;
+                Stretch(t);
+                foreach (var tmp in t.GetComponentsInChildren<TMP_Text>(true))
+                {
+                    StyleText(tmp, 40, White, FontStyles.Normal); tmp.alignment = TextAlignmentOptions.TopLeft;
+                    var r = (RectTransform)tmp.transform; Stretch(r);
+                }
+            }
+        }
+    }
+    static N Pages(float h, params string[] pages) => new PagesN { h = h, pages = pages };
+
+    // ---- Score: read button | big circle | view poster button
+    class ScoreTopN : N
+    {
+        public string p;
+        public override void Build(RectTransform parent)
+        {
+            var t = Place(p, parent); if (t == null) return;
+            var img = t.GetComponent<Image>(); if (img != null) { Undo.RecordObject(img, "IIAD"); img.sprite = sCard; img.type = Image.Type.Sliced; img.color = Cyan; }
+            foreach (var lg in t.GetComponents<LayoutGroup>()) Undo.DestroyObjectImmediate(lg);
+            var hl = Undo.AddComponent<HorizontalLayoutGroup>(t.gameObject);
+            hl.padding = new RectOffset(32, 32, 32, 32); hl.spacing = 24; hl.childAlignment = TextAnchor.MiddleCenter;
+            hl.childControlWidth = true; hl.childControlHeight = true; hl.childForceExpandWidth = false; hl.childForceExpandHeight = false;
+
+            var read = Place(p + "/ReadScoreButton", t);
+            var circle = Place(p + "/TotalScoreCircle", t);
+            var view = Place(p + "/ViewPosterButton", t);
+            if (circle != null) circle.SetSiblingIndex(1);
+            if (view != null) view.SetAsLastSibling();
+            foreach (var b in new[] { read, view })
+            {
+                if (b == null) continue;
+                StyleButton(b.GetComponent<Button>(), K.Stacked);
+                Pref(b, 240, 330);
+            }
+            if (circle != null)
+            {
+                var ci = circle.GetComponent<Image>();
+                if (ci != null) { Undo.RecordObject(ci, "IIAD"); ci.sprite = sCircle; ci.type = Image.Type.Simple; ci.preserveAspect = true; ci.color = Yellow; }
+                Pref(circle, 360, 360);
+                foreach (var tmp in circle.GetComponentsInChildren<TMP_Text>(true))
+                {
+                    bool big = tmp.name.Contains("Marks");
+                    StyleText(tmp, big ? 120 : 38, big ? White : Muted, big ? FontStyles.Bold : FontStyles.Bold);
+                    tmp.alignment = TextAlignmentOptions.Center;
+                }
+            }
+            Pref(t, 0, 410, flexW: 1);
+        }
+    }
+    static N ScoreTop(string p) => new ScoreTopN { p = p };
+
+    class ScoreRowN : N
+    {
+        public string p;
+        public override void Build(RectTransform parent)
+        {
+            var r = Place(p, parent); if (r == null) return;
+            var img = r.GetComponent<Image>(); if (img != null) { Undo.RecordObject(img, "IIAD"); img.sprite = sField; img.type = Image.Type.Sliced; img.color = FieldEdge; }
+            foreach (var lg in r.GetComponents<LayoutGroup>()) Undo.DestroyObjectImmediate(lg);
+            var hl = Undo.AddComponent<HorizontalLayoutGroup>(r.gameObject);
+            hl.padding = new RectOffset(24, 28, 10, 10); hl.spacing = 20; hl.childAlignment = TextAnchor.MiddleLeft;
+            hl.childControlWidth = true; hl.childControlHeight = true; hl.childForceExpandWidth = false; hl.childForceExpandHeight = false;
+            foreach (var c in Children(r))
+            {
+                string n = c.name.ToLowerInvariant(); used.Add(c);
+                var tmp = c.GetComponent<TMP_Text>();
+                if (n == "icon") { var i = c.GetComponent<Image>(); if (i != null) i.preserveAspect = true; Pref(c, 80, 80); c.SetAsFirstSibling(); }
+                else if (tmp != null && tmp.text.Contains("/")) { StyleText(tmp, 46, Yellow, FontStyles.Bold); tmp.alignment = TextAlignmentOptions.MidlineRight; Pref(c, 210, 90); c.SetAsLastSibling(); }
+                else if (tmp != null) { StyleText(tmp, 40, White, FontStyles.Normal); tmp.alignment = TextAlignmentOptions.MidlineLeft; tmp.enableAutoSizing = true; tmp.fontSizeMax = 40; tmp.fontSizeMin = 30; Pref(c, 0, 90, flexW: 1); }
+            }
+            Pref(r, 0, 120, flexW: 1);
+        }
+    }
+    static N ScoreRow(string p) => new ScoreRowN { p = p };
+
+    // ---- Feedback / Improvement card: [icon] Title ........ (read)   + scrolling text
+    class FeedbackN : N
+    {
+        public string p, readBtn;
+        public override void Build(RectTransform parent)
+        {
+            var card = Place(p, parent); if (card == null) return;
+            var img = card.GetComponent<Image>(); if (img != null) { Undo.RecordObject(img, "IIAD"); img.sprite = sCard; img.type = Image.Type.Sliced; img.color = Cyan; }
+            foreach (var lg in card.GetComponents<LayoutGroup>()) Undo.DestroyObjectImmediate(lg);
+            var vl = Undo.AddComponent<VerticalLayoutGroup>(card.gameObject); vl.padding = new RectOffset(44, 44, 36, 40); Column(vl, 20);
+
+            var head = NewRect("IIAD_Row", card);
+            var hl = Undo.AddComponent<HorizontalLayoutGroup>(head.gameObject);
+            hl.spacing = 20; hl.childAlignment = TextAnchor.MiddleLeft;
+            hl.childControlWidth = true; hl.childControlHeight = true; hl.childForceExpandWidth = false; hl.childForceExpandHeight = false;
+            Pref(head, 0, IconBtn, flexW: 1);
+
+            var icon = Place(p + "/Icon", head); if (icon != null) { var i = icon.GetComponent<Image>(); if (i != null) i.preserveAspect = true; Pref(icon, 80, 80); }
+            var title = Place(p + "/Text (TMP)", head); if (title != null) { var tt = title.GetComponent<TMP_Text>(); StyleText(tt, 48, White, FontStyles.Bold); tt.alignment = TextAlignmentOptions.MidlineLeft; Pref(title, 0, 80, flexW: 1); }
+            var read = Place(p + "/" + readBtn, head); if (read != null) { StyleButton(read.GetComponent<Button>(), K.Icon); Pref(read, IconBtn, IconBtn); }
+
+            var sv = Place(p + "/ScrollViewFeedback", card);
+            if (sv != null)
+            {
+                Pref(sv, 0, 420, flexW: 1);
+                foreach (var tmp in sv.GetComponentsInChildren<TMP_Text>(true)) { StyleText(tmp, 40, White, FontStyles.Normal); tmp.alignment = TextAlignmentOptions.TopLeft; }
+            }
+            foreach (var c in Children(card)) if (!used.Contains(c) && c != head) Leftover(c);
+            Pref(card, 0, -1, flexW: 1);
+        }
+    }
+    static N FeedbackCard(string p, string readBtn) => new FeedbackN { p = p, readBtn = readBtn };
+
+    // =================================================================== POPUPS
+    static void StylePopups(Transform popups)
+    {
+        if (popups == null) return;
+        foreach (Transform pop in popups)
+        {
+            var box = pop.Find("Box") as RectTransform;
+            if (box == null) continue;
+            var dim = pop.GetComponent<Image>();
+            if (dim != null && dim.sprite == null) { Undo.RecordObject(dim, "IIAD"); dim.color = new Color(0.02f, 0.04f, 0.1f, 0.78f); }
+
+            var bi = box.GetComponent<Image>(); if (bi != null) { Undo.RecordObject(bi, "IIAD"); bi.sprite = sCard; bi.type = Image.Type.Sliced; bi.color = Cyan; }
+            box.anchorMin = box.anchorMax = box.pivot = new Vector2(0.5f, 0.5f); box.anchoredPosition = Vector2.zero;
+
+            var yes = pop.Find("YesButton") as RectTransform; var no = pop.Find("NoButton") as RectTransform;
+            bool hasButtons = yes != null || no != null;
+            box.sizeDelta = new Vector2(940, hasButtons ? 760 : 620);
+
+            foreach (var tmp in box.GetComponentsInChildren<TMP_Text>(true))
+            {
+                bool title = tmp.name == "Title";
+                StyleText(tmp, title ? 58 : 44, title ? White : Muted, title ? FontStyles.Bold : FontStyles.Normal);
+                tmp.alignment = TextAlignmentOptions.Center;
+                var r = (RectTransform)tmp.transform;
+                if (title) { r.anchorMin = new Vector2(0, 1); r.anchorMax = new Vector2(1, 1); r.pivot = new Vector2(0.5f, 1); r.anchoredPosition = new Vector2(0, -56); r.sizeDelta = new Vector2(-88, 100); }
+                else if (hasButtons) { r.anchorMin = new Vector2(0, 0); r.anchorMax = new Vector2(1, 1); r.offsetMin = new Vector2(48, 240); r.offsetMax = new Vector2(-48, -170); }
+                else { r.anchorMin = new Vector2(0, 0); r.anchorMax = new Vector2(1, 0.5f); r.offsetMin = new Vector2(48, 60); r.offsetMax = new Vector2(-48, 0); }
+            }
+            var spinner = box.Find("Image") as RectTransform;
+            if (spinner != null) { spinner.anchorMin = spinner.anchorMax = new Vector2(0.5f, 0.72f); spinner.anchoredPosition = Vector2.zero; spinner.sizeDelta = new Vector2(220, 220); var si = spinner.GetComponent<Image>(); if (si != null) si.preserveAspect = true; }
+
+            if (hasButtons)
+            {
+                var row = NewRect("IIAD_Row", box);
+                row.anchorMin = new Vector2(0, 0); row.anchorMax = new Vector2(1, 0); row.pivot = new Vector2(0.5f, 0);
+                row.anchoredPosition = new Vector2(0, 48); row.sizeDelta = new Vector2(-96, BtnH);
+                var hl = Undo.AddComponent<HorizontalLayoutGroup>(row.gameObject);
+                hl.spacing = Gap; hl.childControlWidth = true; hl.childControlHeight = true; hl.childForceExpandWidth = true; hl.childForceExpandHeight = true;
+                if (no != null) { Undo.SetTransformParent(no, row, "IIAD"); StyleButton(no.GetComponent<Button>(), K.Secondary); }
+                if (yes != null) { Undo.SetTransformParent(yes, row, "IIAD"); StyleButton(yes.GetComponent<Button>(), K.Primary); }
+            }
+            log.AppendLine("+ popup " + pop.name);
+        }
+    }
+
+    // =================================================================== STYLE HELPERS
+    static void StyleButton(Button b, K kind)
+    {
+        if (b == null) return;
         var rt = (RectTransform)b.transform;
         var img = b.GetComponent<Image>();
-        Undo.RecordObject(b, "IIAD");
-        if (img != null) Undo.RecordObject(img, "IIAD");
-        Undo.RecordObject(rt, "IIAD");
+        Undo.RecordObject(b, "IIAD"); if (img != null) Undo.RecordObject(img, "IIAD");
 
         var cb = b.colors;
         cb.normalColor = Color.white; cb.highlightedColor = new Color(0.92f, 0.92f, 0.92f);
@@ -485,91 +865,76 @@ public static class IIADNeonRestyle
         cb.disabledColor = new Color(1f, 1f, 1f, 0.4f); cb.fadeDuration = 0.08f;
         b.colors = cb; b.transition = Selectable.Transition.ColorTint;
 
-        bool layoutControlsHeight = rt.parent != null && rt.parent.GetComponent<HorizontalOrVerticalLayoutGroup>() is HorizontalOrVerticalLayoutGroup g && g.childControlHeight;
+        var labels = b.GetComponentsInChildren<TMP_Text>(true).Where(t => t.GetComponentInParent<TMP_InputField>(true) == null).ToList();
+        var icon = Children(rt).FirstOrDefault(c => c.name.ToLowerInvariant().Contains("icon") && c.GetComponent<Image>() != null);
 
         switch (kind)
         {
-            case Kind.Eye:
-                if (img != null) img.preserveAspect = true;
-                if (rt.sizeDelta.x < 96) rt.sizeDelta = new Vector2(100, 100);
+            case K.Eye: if (img != null) img.preserveAspect = true; return;
+
+            case K.Link:
+                foreach (var t in labels) { StyleText(t, 40, Cyan, FontStyles.Bold | FontStyles.Underline); t.alignment = TextAlignmentOptions.MidlineLeft; }
                 return;
 
-            case Kind.Link:
-                foreach (var t in Labels(b)) { StyleText(t, 40, Cyan, FontStyles.Bold | FontStyles.Underline); }
-                if (rt.sizeDelta.y < 96) rt.sizeDelta = new Vector2(Mathf.Max(rt.sizeDelta.x, 420), 96);
-                return;
-
-            case Kind.Icon:
+            case K.Icon:
+            case K.IconDanger:
                 if (img != null && img.sprite != sCircle)
                 {
-                    // keep the old icon artwork in a child, put a round button behind it
-                    var iconRT = NewRect("IIAD_Icon", rt);
-                    iconRT.anchorMin = Vector2.zero; iconRT.anchorMax = Vector2.one;
-                    iconRT.offsetMin = new Vector2(26, 26); iconRT.offsetMax = new Vector2(-26, -26);
-                    var icon = Undo.AddComponent<Image>(iconRT.gameObject);
-                    icon.sprite = img.sprite; icon.preserveAspect = true; icon.raycastTarget = false; icon.color = Color.white;
+                    var iconRT = NewRect("IIAD_Icon", rt); Stretch(iconRT);
+                    iconRT.offsetMin = new Vector2(28, 28); iconRT.offsetMax = new Vector2(-28, -28);
+                    var ic = Undo.AddComponent<Image>(iconRT.gameObject);
+                    ic.sprite = img.sprite; ic.preserveAspect = true; ic.raycastTarget = false;
                     img.sprite = sCircle; img.type = Image.Type.Simple; img.preserveAspect = true;
-                    img.color = b.name.ToLowerInvariant().Contains("logout") || b.name.ToLowerInvariant().Contains("exit") ? Coral : Cyan;
                 }
-                if (!layoutControlsHeight) rt.sizeDelta = new Vector2(Mathf.Max(IconBtn, rt.sizeDelta.x > 180 ? rt.sizeDelta.x : IconBtn), Mathf.Max(IconBtn, rt.sizeDelta.y > 180 ? rt.sizeDelta.y : IconBtn));
+                if (img != null) img.color = kind == K.IconDanger ? Coral : Cyan;
                 return;
         }
 
-        Color fill = kind == Kind.Primary ? Yellow : kind == Kind.Danger ? Coral : Cyan;
-        Color fg = kind == Kind.Primary ? Navy : kind == Kind.Danger ? Coral : White;
+        bool primary = kind == K.Primary;
+        bool danger = kind == K.Danger || kind == K.MenuDanger;
         if (img != null)
         {
-            img.sprite = kind == Kind.Primary ? sBtnFill : sBtnOutline;
-            img.type = Image.Type.Sliced; img.pixelsPerUnitMultiplier = 1f; img.preserveAspect = false;
-            img.color = fill;
+            img.enabled = true;
+            img.sprite = primary ? sBtnFill : sBtnOutline; img.type = Image.Type.Sliced; img.pixelsPerUnitMultiplier = 1f; img.preserveAspect = false;
+            img.color = primary ? Yellow : danger ? Coral : Cyan;
         }
-        if (!layoutControlsHeight && rt.sizeDelta.y < ButtonH && rt.anchorMin.y == rt.anchorMax.y)
-            rt.sizeDelta = new Vector2(rt.sizeDelta.x, ButtonH);
+        Color fg = primary ? Navy : danger ? Coral : White;
 
-        var labels = Labels(b).ToList();
-        bool hasIcon = Children(rt).Any(c => c.name.ToLowerInvariant().Contains("icon"));
+        if (kind == K.Stacked)
+        {   // icon on top, label below (score panel)
+            if (icon != null) { icon.anchorMin = icon.anchorMax = new Vector2(0.5f, 1); icon.pivot = new Vector2(0.5f, 1); icon.anchoredPosition = new Vector2(0, -40); icon.sizeDelta = new Vector2(120, 120); icon.GetComponent<Image>().preserveAspect = true; }
+            foreach (var t in labels) { StyleText(t, 36, fg, FontStyles.Bold); t.alignment = TextAlignmentOptions.Center; var r = (RectTransform)t.transform; r.anchorMin = new Vector2(0, 0); r.anchorMax = new Vector2(1, 0); r.pivot = new Vector2(0.5f, 0); r.anchoredPosition = new Vector2(0, 30); r.sizeDelta = new Vector2(-24, 110); }
+            return;
+        }
+
+        bool menu = kind == K.Menu || kind == K.MenuDanger;
+        float iconSize = menu ? 96 : 68, iconX = menu ? 32 : 28;
+        if (icon != null)
+        {
+            icon.anchorMin = icon.anchorMax = new Vector2(0, 0.5f); icon.pivot = new Vector2(0, 0.5f);
+            icon.anchoredPosition = new Vector2(iconX, 0); icon.sizeDelta = new Vector2(iconSize, iconSize);
+            var ii = icon.GetComponent<Image>(); ii.preserveAspect = true;
+        }
+        float textLeft = icon != null ? iconX + iconSize + 24 : 24;
+
         for (int i = 0; i < labels.Count; i++)
         {
             var t = labels[i];
-            bool secondLine = kind == Kind.Menu && i > 0;
-            StyleText(t, secondLine ? 38 : 48, secondLine ? Muted : fg, secondLine ? FontStyles.Normal : FontStyles.Bold);
-            t.enableAutoSizing = true; t.fontSizeMax = secondLine ? 38 : 50; t.fontSizeMin = 30;
-            if (hasIcon || (kind == Kind.Menu && labels.Count > 1)) t.alignment = TextAlignmentOptions.MidlineLeft;
-            else t.alignment = TextAlignmentOptions.Center;
-        }
-    }
-
-    static IEnumerable<TMP_Text> Labels(Button b) =>
-        b.GetComponentsInChildren<TMP_Text>(true).Where(t => t.GetComponentInParent<TMP_InputField>(true) == null);
-
-    static void StyleField(Image img, TMP_Text text, TMP_Text placeholder)
-    {
-        if (img != null)
-        {
-            Undo.RecordObject(img, "IIAD");
-            img.sprite = sField; img.type = Image.Type.Sliced; img.pixelsPerUnitMultiplier = 1f; img.color = FieldEdge;
-            var rt = (RectTransform)img.transform;
-            bool controlled = rt.parent != null && rt.parent.GetComponent<HorizontalOrVerticalLayoutGroup>() is HorizontalOrVerticalLayoutGroup g && g.childControlHeight;
-            if (!controlled && rt.sizeDelta.y < FieldH && rt.anchorMin.y == rt.anchorMax.y) rt.sizeDelta = new Vector2(Mathf.Max(rt.sizeDelta.x, 600), FieldH);
-        }
-        if (text != null) { StyleText(text, 44, White, FontStyles.Normal); text.enableAutoSizing = false; }
-        if (placeholder != null) { StyleText(placeholder, 44, new Color(Muted.r, Muted.g, Muted.b, 0.75f), FontStyles.Italic); placeholder.enableAutoSizing = false; }
-    }
-
-    static void StyleDropdown(TMP_Dropdown d)
-    {
-        StyleField(d.GetComponent<Image>(), d.captionText, d.placeholder as TMP_Text);
-        if (d.itemText != null) StyleText(d.itemText, 44, White, FontStyles.Normal);
-        if (d.template != null)
-        {
-            var timg = d.template.GetComponent<Image>();
-            if (timg != null) { Undo.RecordObject(timg, "IIAD"); timg.sprite = sCard; timg.type = Image.Type.Sliced; timg.color = Cyan; }
-            foreach (var t in d.template.GetComponentsInChildren<Toggle>(true))
+            bool second = menu && labels.Count > 1 && i > 0;
+            StyleText(t, second ? 36 : 48, second ? Muted : fg, second ? FontStyles.Normal : FontStyles.Bold);
+            t.enableAutoSizing = true; t.fontSizeMax = second ? 36 : 50; t.fontSizeMin = 30;
+            var r = (RectTransform)t.transform;
+            if (labels.Count == 1)
             {
-                var bg = t.targetGraphic as Image;
-                if (bg != null) { Undo.RecordObject(bg, "IIAD"); bg.color = new Color(0.07f, 0.14f, 0.29f, 1f); }
-                var tr = (RectTransform)t.transform; Undo.RecordObject(tr, "IIAD");
-                tr.sizeDelta = new Vector2(tr.sizeDelta.x, Mathf.Max(tr.sizeDelta.y, 120));
+                r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.pivot = new Vector2(0.5f, 0.5f);
+                r.offsetMin = new Vector2(textLeft, 8); r.offsetMax = new Vector2(-24, -8);
+                t.alignment = icon != null || menu ? TextAlignmentOptions.MidlineLeft : TextAlignmentOptions.Center;
+            }
+            else
+            {   // two-line card (sample prompts): title on top, text under it
+                r.anchorMin = new Vector2(0, i == 0 ? 0.62f : 0f); r.anchorMax = new Vector2(1, i == 0 ? 1f : 0.62f);
+                r.offsetMin = new Vector2(textLeft, i == 0 ? 0 : 24); r.offsetMax = new Vector2(-32, i == 0 ? -24 : 0);
+                t.alignment = i == 0 ? TextAlignmentOptions.BottomLeft : TextAlignmentOptions.TopLeft;
             }
         }
     }
@@ -583,21 +948,128 @@ public static class IIADNeonRestyle
         t.textWrappingMode = TextWrappingModes.Normal;
     }
 
-    static bool IsTitle(Image img)
+    static Color ToneColor(Tone t) => t == Tone.Muted ? Muted : t == Tone.Accent ? Cyan : t == Tone.Error ? Coral : t == Tone.Score ? Yellow : White;
+
+    /// <summary>Inputs, dropdowns and any text the recipes did not reach.</summary>
+    static void FinalStylePass(Transform root)
     {
-        string n = img.name.ToLowerInvariant();
-        return (n.Contains("title") || n == "titlle") && img.GetComponentInChildren<TMP_Text>(true) != null && !n.Contains("logo");
+        foreach (var f in root.GetComponentsInChildren<TMP_InputField>(true))
+        {
+            var img = f.GetComponent<Image>();
+            if (img != null) { Undo.RecordObject(img, "IIAD"); img.sprite = sField; img.type = Image.Type.Sliced; img.pixelsPerUnitMultiplier = 1f; img.color = FieldEdge; }
+            Undo.RecordObject(f, "IIAD");
+            if (f.textComponent != null) { StyleText(f.textComponent, 44, White, FontStyles.Normal); f.textComponent.enableAutoSizing = false; }
+            if (f.placeholder is TMP_Text ph) { StyleText(ph, 42, new Color(Muted.r, Muted.g, Muted.b, 0.75f), FontStyles.Italic); ph.enableAutoSizing = false; }
+            f.customCaretColor = true; f.caretColor = Cyan; f.caretWidth = 3;
+            f.selectionColor = new Color(Cyan.r, Cyan.g, Cyan.b, 0.35f);
+            if (f.textViewport != null && f.textViewport.offsetMin.x < 20) { Undo.RecordObject(f.textViewport, "IIAD"); f.textViewport.offsetMin = new Vector2(28, Mathf.Max(f.textViewport.offsetMin.y, 12)); if (f.textViewport.offsetMax.x > -20) f.textViewport.offsetMax = new Vector2(-28, Mathf.Min(f.textViewport.offsetMax.y, -12)); }
+        }
+        foreach (var d in root.GetComponentsInChildren<TMP_Dropdown>(true))
+        {
+            var img = d.GetComponent<Image>();
+            if (img != null) { Undo.RecordObject(img, "IIAD"); img.sprite = sField; img.type = Image.Type.Sliced; img.color = FieldEdge; }
+            if (d.captionText != null) { StyleText(d.captionText, 44, White, FontStyles.Normal); var r = d.captionText.rectTransform; r.offsetMin = new Vector2(28, r.offsetMin.y); r.offsetMax = new Vector2(-90, r.offsetMax.y); }
+            if (d.itemText != null) StyleText(d.itemText, 44, White, FontStyles.Normal);
+            var arrow = d.transform.Find("Arrow") as RectTransform;
+            if (arrow != null) { arrow.sizeDelta = new Vector2(48, 48); arrow.anchoredPosition = new Vector2(-40, 0); var ai = arrow.GetComponent<Image>(); if (ai != null) ai.color = Cyan; }
+            if (d.template != null)
+            {
+                var ti = d.template.GetComponent<Image>(); if (ti != null) { Undo.RecordObject(ti, "IIAD"); ti.sprite = sCard; ti.type = Image.Type.Sliced; ti.color = Cyan; }
+                foreach (var tog in d.template.GetComponentsInChildren<Toggle>(true))
+                {
+                    if (tog.targetGraphic is Image bg) { Undo.RecordObject(bg, "IIAD"); bg.color = new Color(0.05f, 0.11f, 0.22f, 1f); }
+                    var tr = (RectTransform)tog.transform; Undo.RecordObject(tr, "IIAD"); tr.sizeDelta = new Vector2(tr.sizeDelta.x, Mathf.Max(tr.sizeDelta.y, 120));
+                }
+                var content = d.template.Find("Viewport/Content") as RectTransform;
+                if (content != null) { Undo.RecordObject(content, "IIAD"); content.sizeDelta = new Vector2(content.sizeDelta.x, Mathf.Max(content.sizeDelta.y, 128)); }
+            }
+        }
+        foreach (var t in root.GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (font != null && t.font != font) { Undo.RecordObject(t, "IIAD"); t.font = font; }
+            Color.RGBToHSV(t.color, out _, out _, out float v);
+            if (v < 0.45f && t.GetComponentInParent<Button>(true) == null) { Undo.RecordObject(t, "IIAD"); t.color = White; }
+            if (!t.enableAutoSizing && t.fontSize < 32) { Undo.RecordObject(t, "IIAD"); t.fontSize = 32; }
+        }
     }
 
-    // ==================================================================
-    // SPRITES (generated once into Assets/Arts/NEW UI/IIAD Neon)
-    // ==================================================================
+    static void StylePrefab(string path)
+    {
+        if (!File.Exists(path)) return;
+        var root = PrefabUtility.LoadPrefabContents(path);
+        try
+        {
+            var img = root.GetComponent<Image>();
+            if (img != null) { img.sprite = ((RectTransform)root.transform).sizeDelta.y < 120 ? sField : sCard; img.type = Image.Type.Sliced; img.pixelsPerUnitMultiplier = 1f; img.color = Cyan; }
+            foreach (var t in root.GetComponentsInChildren<TMP_Text>(true))
+            {
+                if (font != null) t.font = font;
+                if (t.GetComponentInParent<Button>(true) != null) { t.color = Navy; t.fontStyle = FontStyles.Bold; continue; }
+                bool key = t.name.Contains("Key") || t.name.Contains("rank");
+                t.color = key ? Muted : White;
+                if (t.name.ToLowerInvariant().Contains("score")) { t.color = Yellow; t.fontStyle = FontStyles.Bold; }
+                if (t.fontSize < 32 && !t.enableAutoSizing) t.fontSize = 32;
+            }
+            foreach (var b in root.GetComponentsInChildren<Button>(true))
+            {
+                var bi = b.GetComponent<Image>();
+                if (bi != null) { bi.sprite = sBtnFill; bi.type = Image.Type.Sliced; bi.color = Yellow; }
+                var rt = (RectTransform)b.transform; if (rt.sizeDelta.y < 110) rt.sizeDelta = new Vector2(rt.sizeDelta.x, 110);
+            }
+            PrefabUtility.SaveAsPrefabAsset(root, path);
+            log.AppendLine("+ prefab " + path);
+        }
+        finally { PrefabUtility.UnloadPrefabContents(root); }
+    }
 
+    // =================================================================== LEFTOVERS
+    /// <summary>Something the recipe did not place. Decoration is hidden; anything a script uses stays, out of the layout.</summary>
+    static void Leftover(RectTransform t)
+    {
+        if (t == null || used.Contains(t)) return;
+        used.Add(t);
+        bool important = referenced.Contains(t.gameObject)
+                      || t.GetComponentsInChildren<Selectable>(true).Length > 0
+                      || t.GetComponentsInChildren<RawImage>(true).Length > 0
+                      || t.GetComponentsInChildren<TMP_Text>(true).Any(x => referenced.Contains(x.gameObject));
+        if (!important)
+        {
+            if (t.gameObject.activeSelf) { Undo.RecordObject(t.gameObject, "IIAD"); t.gameObject.SetActive(false); }
+            log.AppendLine("  - hid decoration " + RelPath(screenRoot, t));
+            return;
+        }
+        var le = t.GetComponent<LayoutElement>() ?? Undo.AddComponent<LayoutElement>(t.gameObject);
+        le.ignoreLayout = true;
+        log.AppendLine("  ~ kept in place (used by a script, not in recipe): " + RelPath(screenRoot, t));
+    }
+
+    /// <summary>Every GameObject that a script field points to (directly or through one of its components).</summary>
+    static HashSet<GameObject> CollectReferenced(Scene scene)
+    {
+        var set = new HashSet<GameObject>();
+        foreach (var root in scene.GetRootGameObjects())
+            foreach (var mb in root.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (mb == null) continue;
+                string ns = mb.GetType().Namespace ?? "";
+                if (ns.StartsWith("UnityEngine") || ns.StartsWith("TMPro")) continue;   // UI components reference their own children
+                var so = new SerializedObject(mb);
+                var it = so.GetIterator();
+                while (it.NextVisible(true))
+                {
+                    if (it.propertyType != SerializedPropertyType.ObjectReference || it.objectReferenceValue == null) continue;
+                    if (it.objectReferenceValue is GameObject g) set.Add(g);
+                    else if (it.objectReferenceValue is Component c) set.Add(c.gameObject);
+                }
+            }
+        return set;
+    }
+
+    // =================================================================== SPRITES
     static void EnsureSprites()
     {
         if (!AssetDatabase.IsValidFolder("Assets/Arts/NEW UI")) AssetDatabase.CreateFolder("Assets/Arts", "NEW UI");
         if (!AssetDatabase.IsValidFolder(SpriteFolder)) AssetDatabase.CreateFolder("Assets/Arts/NEW UI", "IIAD Neon");
-
         sBtnFill = MakeSprite("iiad_button_fill", 128, 44, 0, 1f, 1f, true);
         sBtnOutline = MakeSprite("iiad_button_outline", 128, 44, 5, 0.18f, 1f, true);
         sCard = MakeSprite("iiad_card", 128, 40, 3, 0.13f, 0.94f, true);
@@ -605,7 +1077,6 @@ public static class IIADNeonRestyle
         sCircle = MakeSprite("iiad_circle", 128, 64, 5, 0.18f, 1f, false);
     }
 
-    /// <summary>White rounded rectangle. ring>0: white edge with a dark inner fill (so one tint colours the edge and darkens the fill).</summary>
     static Sprite MakeSprite(string name, int size, float radius, float ring, float innerGray, float innerAlpha, bool sliced)
     {
         string path = SpriteFolder + "/" + name + ".png";
@@ -618,14 +1089,13 @@ public static class IIADNeonRestyle
                 {
                     float px = Mathf.Abs(x + 0.5f - half) - (half - radius);
                     float py = Mathf.Abs(y + 0.5f - half) - (half - radius);
-                    float outside = new Vector2(Mathf.Max(px, 0), Mathf.Max(py, 0)).magnitude + Mathf.Min(Mathf.Max(px, py), 0);
-                    float d = outside - radius;                         // signed distance, <0 inside
+                    float d = new Vector2(Mathf.Max(px, 0), Mathf.Max(py, 0)).magnitude + Mathf.Min(Mathf.Max(px, py), 0) - radius;
                     float a = Mathf.Clamp01(0.5f - d);
                     Color c;
                     if (ring <= 0) c = new Color(1, 1, 1, a);
                     else
                     {
-                        float inner = Mathf.Clamp01(0.5f - (d + ring)); // 1 inside the ring
+                        float inner = Mathf.Clamp01(0.5f - (d + ring));
                         float g = Mathf.Lerp(1f, innerGray, inner);
                         c = new Color(g, g, g, a * Mathf.Lerp(1f, innerAlpha, inner));
                     }
@@ -635,23 +1105,15 @@ public static class IIADNeonRestyle
             Object.DestroyImmediate(tex);
             AssetDatabase.ImportAsset(path);
         }
-
         var imp = (TextureImporter)AssetImporter.GetAtPath(path);
         float border = sliced ? radius + 2 : 0;
         if (imp.textureType != TextureImporterType.Sprite || imp.spriteBorder.x != border)
         {
-            imp.textureType = TextureImporterType.Sprite;
-            imp.spriteImportMode = SpriteImportMode.Single;
-            imp.mipmapEnabled = false;
-            imp.alphaIsTransparency = true;
-            imp.filterMode = FilterMode.Bilinear;
-            imp.textureCompression = TextureImporterCompression.Uncompressed;
-            imp.spritePixelsPerUnit = 100;
+            imp.textureType = TextureImporterType.Sprite; imp.spriteImportMode = SpriteImportMode.Single;
+            imp.mipmapEnabled = false; imp.alphaIsTransparency = true; imp.filterMode = FilterMode.Bilinear;
+            imp.textureCompression = TextureImporterCompression.Uncompressed; imp.spritePixelsPerUnit = 100;
             imp.spriteBorder = new Vector4(border, border, border, border);
-            var settings = new TextureImporterSettings();
-            imp.ReadTextureSettings(settings);
-            settings.spriteMeshType = SpriteMeshType.FullRect;
-            imp.SetTextureSettings(settings);
+            var st = new TextureImporterSettings(); imp.ReadTextureSettings(st); st.spriteMeshType = SpriteMeshType.FullRect; imp.SetTextureSettings(st);
             imp.SaveAndReimport();
         }
         return AssetDatabase.LoadAssetAtPath<Sprite>(path);
@@ -661,24 +1123,39 @@ public static class IIADNeonRestyle
     {
         foreach (var guid in AssetDatabase.FindAssets("Lexend t:TMP_FontAsset"))
             return AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(AssetDatabase.GUIDToAssetPath(guid));
-        log.AppendLine("Lexend TMP font asset not found; fonts left as they were.");
+        log.AppendLine("Lexend TMP font asset not found; fonts unchanged.");
         return null;
     }
 
-    // ==================================================================
-    // helpers
-    // ==================================================================
+    // =================================================================== UTIL
+    static void Column(VerticalLayoutGroup vl, float spacing)
+    {
+        vl.spacing = spacing; vl.childAlignment = TextAnchor.UpperCenter;
+        vl.childControlWidth = true; vl.childControlHeight = true;
+        vl.childForceExpandWidth = true; vl.childForceExpandHeight = false;
+    }
+
+    /// <summary>Sets the size the parent layout gives this item. h = -1 lets its own layout decide.</summary>
+    static void Pref(RectTransform t, float w, float h, float flexW = 0, bool minOnly = false)
+    {
+        var le = t.GetComponent<LayoutElement>() ?? Undo.AddComponent<LayoutElement>(t.gameObject);
+        Undo.RecordObject(le, "IIAD");
+        le.ignoreLayout = false;
+        if (w > 0) { le.minWidth = w; le.preferredWidth = w; } else { le.minWidth = -1; le.preferredWidth = -1; }
+        le.flexibleWidth = flexW > 0 ? flexW : (w > 0 ? 0 : -1);
+        if (h > 0) { le.minHeight = h; le.preferredHeight = minOnly ? -1 : h; } else { le.minHeight = -1; le.preferredHeight = -1; }
+        le.flexibleHeight = -1;
+    }
 
     static Transform FindInScene(string name)
     {
-        var scene = SceneManager.GetActiveScene();
-        foreach (var root in scene.GetRootGameObjects())
+        foreach (var root in SceneManager.GetActiveScene().GetRootGameObjects())
             foreach (var t in root.GetComponentsInChildren<Transform>(true))
                 if (t.name == name) return t;
         return null;
     }
 
-    static IEnumerable<RectTransform> Children(Transform t)
+    static List<RectTransform> Children(Transform t)
     {
         var list = new List<RectTransform>();
         foreach (Transform c in t) if (c is RectTransform r) list.Add(r);
@@ -691,31 +1168,17 @@ public static class IIADNeonRestyle
         Undo.RegisterCreatedObjectUndo(go, "IIAD");
         go.layer = parent.gameObject.layer;
         var rt = (RectTransform)go.transform;
-        rt.SetParent(parent, false);
-        rt.localScale = Vector3.one;
+        rt.SetParent(parent, false); rt.localScale = Vector3.one;
         return rt;
     }
 
-    static T GetOrAdd<T>(GameObject go) where T : Component
-    {
-        var c = go.GetComponent<T>();
-        return c != null ? c : Undo.AddComponent<T>(go);
-    }
+    static void Stretch(RectTransform r) { r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = r.offsetMax = Vector2.zero; r.pivot = new Vector2(0.5f, 0.5f); }
 
-    static bool IsFullStretch(RectTransform r) =>
-        r.anchorMin.x <= 0.001f && r.anchorMin.y <= 0.001f && r.anchorMax.x >= 0.999f && r.anchorMax.y >= 0.999f;
-
-    static Vector3 WorldCenter(RectTransform r)
+    static string RelPath(Transform root, Transform t)
     {
-        var c = new Vector3[4]; r.GetWorldCorners(c);
-        return (c[0] + c[2]) * 0.5f;
-    }
-
-    static Vector2 FitHeight(RectTransform r, float h)
-    {
-        var s = r.rect.size;
-        if (s.y <= 0) return new Vector2(h, h);
-        return new Vector2(s.x * h / s.y, h);
+        var parts = new List<string>();
+        while (t != null && t != root) { parts.Insert(0, t.name); t = t.parent; }
+        return string.Join("/", parts);
     }
 
     static Color Hex(string h) => ColorUtility.TryParseHtmlString(h, out var c) ? c : Color.magenta;
