@@ -1,0 +1,1079 @@
+fileFormatVersion: 2
+guid: 00d2e36f608f7d646b3087198942db30
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -92784300847479633
+    second: iiad_app_wordmark_0
+  - first:
+      213: 3105416876119434049
+    second: iiad_app_wordmark_1
+  - first:
+      213: 5986702492833304900
+    second: iiad_app_wordmark_2
+  - first:
+      213: 2092390772961867104
+    second: iiad_app_wordmark_3
+  - first:
+      213: 7248386734357903229
+    second: iiad_app_wordmark_4
+  - first:
+      213: 6777305084499301545
+    second: iiad_app_wordmark_5
+  - first:
+      213: 2143130386638212905
+    second: iiad_app_wordmark_6
+  - first:
+      213: -7343331517431165228
+    second: iiad_app_wordmark_7
+  - first:
+      213: 6813264949472493403
+    second: iiad_app_wordmark_8
+  - first:
+      213: -4097084764685232838
+    second: iiad_app_wordmark_9
+  - first:
+      213: -1531874543074995816
+    second: iiad_app_wordmark_10
+  - first:
+      213: -247491193768115116
+    second: iiad_app_wordmark_11
+  - first:
+      213: -4101327091772823928
+    second: iiad_app_wordmark_12
+  - first:
+      213: 6610816085085023150
+    second: iiad_app_wordmark_13
+  - first:
+      213: 313079968229627542
+    second: iiad_app_wordmark_14
+  - first:
+      213: -6532671053058503036
+    second: iiad_app_wordmark_15
+  - first:
+      213: -6358886036692817141
+    second: iiad_app_wordmark_16
+  - first:
+      213: 2961444067203018194
+    second: iiad_app_wordmark_17
+  - first:
+      213: -3829099880117420369
+    second: iiad_app_wordmark_18
+  - first:
+      213: -8093841794638117247
+    second: iiad_app_wordmark_19
+  - first:
+      213: -8541447168236249864
+    second: iiad_app_wordmark_20
+  - first:
+      213: 2520038791594887480
+    second: iiad_app_wordmark_21
+  - first:
+      213: 5018416275278409937
+    second: iiad_app_wordmark_22
+  - first:
+      213: -4940265099031358513
+    second: iiad_app_wordmark_23
+  - first:
+      213: -3565325829506460742
+    second: iiad_app_wordmark_24
+  - first:
+      213: -1404104081175166045
+    second: iiad_app_wordmark_25
+  - first:
+      213: 4996737206040396992
+    second: iiad_app_wordmark_26
+  - first:
+      213: 482453798970211643
+    second: iiad_app_wordmark_27
+  - first:
+      213: 6772670818550753340
+    second: iiad_app_wordmark_28
+  - first:
+      213: -1025389409084551118
+    second: iiad_app_wordmark_29
+  - first:
+      213: 1581560967082017682
+    second: iiad_app_wordmark_30
+  - first:
+      213: 1682488272539593625
+    second: iiad_app_wordmark_31
+  - first:
+      213: 7485197650454138800
+    second: iiad_app_wordmark_32
+  - first:
+      213: 726024264204268686
+    second: iiad_app_wordmark_33
+  - first:
+      213: 6975030510560991347
+    second: iiad_app_wordmark_34
+  - first:
+      213: 7300121914509235713
+    second: iiad_app_wordmark_35
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WindowsStoreApps
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: iiad_app_wordmark_0
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 129
+        width: 95
+        height: 92
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fa4c0438b2d56bef0800000000000000
+      internalID: -92784300847479633
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_1
+      rect:
+        serializedVersion: 2
+        x: 131
+        y: 129
+        width: 59
+        height: 92
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1432a941238a81b20800000000000000
+      internalID: 3105416876119434049
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_2
+      rect:
+        serializedVersion: 2
+        x: 246
+        y: 129
+        width: 95
+        height: 92
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4415645c23a051350800000000000000
+      internalID: 5986702492833304900
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_3
+      rect:
+        serializedVersion: 2
+        x: 342
+        y: 127
+        width: 79
+        height: 96
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 06572b1725aa90d10800000000000000
+      internalID: 2092390772961867104
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_4
+      rect:
+        serializedVersion: 2
+        x: 427
+        y: 127
+        width: 80
+        height: 96
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d777e00d451779460800000000000000
+      internalID: 7248386734357903229
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_5
+      rect:
+        serializedVersion: 2
+        x: 521
+        y: 129
+        width: 60
+        height: 92
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9a497001113dd0e50800000000000000
+      internalID: 6777305084499301545
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_6
+      rect:
+        serializedVersion: 2
+        x: 593
+        y: 127
+        width: 79
+        height: 96
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92f8aea5bbdedbd10800000000000000
+      internalID: 2143130386638212905
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_7
+      rect:
+        serializedVersion: 2
+        x: 681
+        y: 129
+        width: 83
+        height: 92
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4dec59b34ee371a90800000000000000
+      internalID: -7343331517431165228
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_8
+      rect:
+        serializedVersion: 2
+        x: 779
+        y: 129
+        width: 59
+        height: 92
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b5f7de19f549d8e50800000000000000
+      internalID: 6813264949472493403
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_9
+      rect:
+        serializedVersion: 2
+        x: 849
+        y: 129
+        width: 94
+        height: 92
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a3595422d1b3427c0800000000000000
+      internalID: -4097084764685232838
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_10
+      rect:
+        serializedVersion: 2
+        x: 955
+        y: 129
+        width: 70
+        height: 92
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8911d832830bdbae0800000000000000
+      internalID: -1531874543074995816
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_11
+      rect:
+        serializedVersion: 2
+        x: 1090
+        y: 129
+        width: 88
+        height: 92
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4540a6e021cb09cf0800000000000000
+      internalID: -247491193768115116
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_12
+      rect:
+        serializedVersion: 2
+        x: 1194
+        y: 129
+        width: 70
+        height: 92
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 886e1336db82517c0800000000000000
+      internalID: -4101327091772823928
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_13
+      rect:
+        serializedVersion: 2
+        x: 1273
+        y: 127
+        width: 80
+        height: 96
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eab6eea24365ebb50800000000000000
+      internalID: 6610816085085023150
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_14
+      rect:
+        serializedVersion: 2
+        x: 1367
+        y: 129
+        width: 60
+        height: 92
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6961e948298485400800000000000000
+      internalID: 313079968229627542
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_15
+      rect:
+        serializedVersion: 2
+        x: 1441
+        y: 127
+        width: 93
+        height: 96
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48e88ffe94a4755a0800000000000000
+      internalID: -6532671053058503036
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_16
+      rect:
+        serializedVersion: 2
+        x: 1551
+        y: 129
+        width: 86
+        height: 92
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0babb727d2b0c7a0800000000000000
+      internalID: -6358886036692817141
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_17
+      rect:
+        serializedVersion: 2
+        x: 319
+        y: 28
+        width: 32
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2dde2df40b9291920800000000000000
+      internalID: 2961444067203018194
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_18
+      rect:
+        serializedVersion: 2
+        x: 371
+        y: 29
+        width: 30
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fae3c1c42fd4cdac0800000000000000
+      internalID: -3829099880117420369
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_19
+      rect:
+        serializedVersion: 2
+        x: 421
+        y: 29
+        width: 28
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 186826255c5ecaf80800000000000000
+      internalID: -8093841794638117247
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_20
+      rect:
+        serializedVersion: 2
+        x: 466
+        y: 29
+        width: 38
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8fc13851e0fa67980800000000000000
+      internalID: -8541447168236249864
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_21
+      rect:
+        serializedVersion: 2
+        x: 522
+        y: 29
+        width: 36
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 839c731ede9f8f220800000000000000
+      internalID: 2520038791594887480
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_22
+      rect:
+        serializedVersion: 2
+        x: 606
+        y: 42
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1d0320f730ff4a540800000000000000
+      internalID: 5018416275278409937
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_23
+      rect:
+        serializedVersion: 2
+        x: 667
+        y: 28
+        width: 35
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fc3d9fb2117a07bb0800000000000000
+      internalID: -4940265099031358513
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_24
+      rect:
+        serializedVersion: 2
+        x: 721
+        y: 29
+        width: 33
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab31eb74c0b658ec0800000000000000
+      internalID: -3565325829506460742
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_25
+      rect:
+        serializedVersion: 2
+        x: 773
+        y: 29
+        width: 28
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a3c0e507ce938ce0800000000000000
+      internalID: -1404104081175166045
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_26
+      rect:
+        serializedVersion: 2
+        x: 818
+        y: 29
+        width: 38
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c4040ad30af75540800000000000000
+      internalID: 4996737206040396992
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_27
+      rect:
+        serializedVersion: 2
+        x: 869
+        y: 29
+        width: 33
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b3d382c8c2502b600800000000000000
+      internalID: 482453798970211643
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_28
+      rect:
+        serializedVersion: 2
+        x: 921
+        y: 29
+        width: 28
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c382f50f93c5dfd50800000000000000
+      internalID: 6772670818550753340
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_29
+      rect:
+        serializedVersion: 2
+        x: 999
+        y: 42
+        width: 12
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2305113e3c515c1f0800000000000000
+      internalID: -1025389409084551118
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_30
+      rect:
+        serializedVersion: 2
+        x: 1058
+        y: 29
+        width: 39
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2930c81f155d2f510800000000000000
+      internalID: 1581560967082017682
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_31
+      rect:
+        serializedVersion: 2
+        x: 1112
+        y: 28
+        width: 35
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 99bab7f6b26695710800000000000000
+      internalID: 1682488272539593625
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_32
+      rect:
+        serializedVersion: 2
+        x: 1163
+        y: 28
+        width: 35
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0bf48e4da93c0e760800000000000000
+      internalID: 7485197650454138800
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_33
+      rect:
+        serializedVersion: 2
+        x: 1217
+        y: 29
+        width: 28
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e84b53eb83b531a00800000000000000
+      internalID: 726024264204268686
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_34
+      rect:
+        serializedVersion: 2
+        x: 1263
+        y: 28
+        width: 32
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 378df774b494cc060800000000000000
+      internalID: 6975030510560991347
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iiad_app_wordmark_35
+      rect:
+        serializedVersion: 2
+        x: 1312
+        y: 28
+        width: 32
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1061e5b143e3f4560800000000000000
+      internalID: 7300121914509235713
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      iiad_app_wordmark_0: -92784300847479633
+      iiad_app_wordmark_1: 3105416876119434049
+      iiad_app_wordmark_10: -1531874543074995816
+      iiad_app_wordmark_11: -247491193768115116
+      iiad_app_wordmark_12: -4101327091772823928
+      iiad_app_wordmark_13: 6610816085085023150
+      iiad_app_wordmark_14: 313079968229627542
+      iiad_app_wordmark_15: -6532671053058503036
+      iiad_app_wordmark_16: -6358886036692817141
+      iiad_app_wordmark_17: 2961444067203018194
+      iiad_app_wordmark_18: -3829099880117420369
+      iiad_app_wordmark_19: -8093841794638117247
+      iiad_app_wordmark_2: 5986702492833304900
+      iiad_app_wordmark_20: -8541447168236249864
+      iiad_app_wordmark_21: 2520038791594887480
+      iiad_app_wordmark_22: 5018416275278409937
+      iiad_app_wordmark_23: -4940265099031358513
+      iiad_app_wordmark_24: -3565325829506460742
+      iiad_app_wordmark_25: -1404104081175166045
+      iiad_app_wordmark_26: 4996737206040396992
+      iiad_app_wordmark_27: 482453798970211643
+      iiad_app_wordmark_28: 6772670818550753340
+      iiad_app_wordmark_29: -1025389409084551118
+      iiad_app_wordmark_3: 2092390772961867104
+      iiad_app_wordmark_30: 1581560967082017682
+      iiad_app_wordmark_31: 1682488272539593625
+      iiad_app_wordmark_32: 7485197650454138800
+      iiad_app_wordmark_33: 726024264204268686
+      iiad_app_wordmark_34: 6975030510560991347
+      iiad_app_wordmark_35: 7300121914509235713
+      iiad_app_wordmark_4: 7248386734357903229
+      iiad_app_wordmark_5: 6777305084499301545
+      iiad_app_wordmark_6: 2143130386638212905
+      iiad_app_wordmark_7: -7343331517431165228
+      iiad_app_wordmark_8: 6813264949472493403
+      iiad_app_wordmark_9: -4097084764685232838
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
